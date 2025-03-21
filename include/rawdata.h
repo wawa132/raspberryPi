@@ -3,6 +3,6 @@
 
 #include "var.h"
 
-void *make_data();
+void *sensor_thread();
 
 #endif

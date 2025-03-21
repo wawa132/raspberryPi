@@ -87,7 +87,42 @@ void *tcp_server()
             printf("server accept the client...\n");
         }
 
-        // Function for process between cliet and server
+        // Accepted client socket setup timeout
+        struct timeval timeout;
+        timeout.tv_sec = 30;
+        timeout.tv_usec = 0;
+
+        if (setsockopt(connfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
+        {
+            printf("connected socket send timeout setup failed\n");
+            close(sockfd);
+
+            if (RUNNING)
+                continue;
+            else
+                break;
+        }
+        else
+        {
+            printf("connected socket send timeout setup success.\n");
+        }
+
+        if (setsockopt(connfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+        {
+            printf("connected socket recv timeout setup failed\n");
+            close(sockfd);
+
+            if (RUNNING)
+                continue;
+            else
+                break;
+        }
+        else
+        {
+            printf("connected socket recv timeout setup success.\n");
+        }
+
+        // Function for process between client and server
         process_client_message(connfd);
 
         // After process close the socket

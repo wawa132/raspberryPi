@@ -1,7 +1,8 @@
 #include "main.h"
 
-bool RUNNING = true;
+bool RUNNING = true, initial_operation = true;
 struct tm current_time;
+time_t now, before_now;
 pthread_t thread[MAX_THREAD];
 
 int main()
@@ -38,21 +39,24 @@ void time_process()
 {
     time_t t = time(NULL);
     current_time = *localtime(&t);
-    time_t now = mktime(&current_time);
+    now = mktime(&current_time);
 
-    if (now % 5 == 0) // 5초 간격
+    if (now % 5 == 0 && now != before_now) // 5초 간격
     {
-        process_5sec(); // 5초 데이터 생성
-
-        if (now % FIVSEC == 0)
+        if (initial_operation)
         {
-            process_5min(); // 5분 데이터 생성
-
-            if (now % HAFSEC == 0)
-            {
-                process_30min(); // 30분 데이터 생성
-            }
+            before_now = now;
+            initial_operation = false;
         }
+
+        if ((now - before_now) > 5) // 5초 데이터 1개 누락
+        {
+            process_enqueue(&planter, before_now);
+        }
+
+        process_enqueue(&planter, now);
+
+        before_now = now;
     }
 }
 
@@ -74,7 +78,7 @@ void exit_handler(int signum)
 
 void thread_create()
 {
-    if (pthread_create(&thread[0], NULL, make_data, NULL) != 0)
+    if (pthread_create(&thread[0], NULL, sensor_thread, NULL) != 0)
     {
         fprintf(stderr, "Failed to create making data thread...\n");
         exit(EXIT_FAILURE);
@@ -91,6 +95,12 @@ void thread_create()
         fprintf(stderr, "Failed to create tcp-client thread...\n");
         exit(EXIT_FAILURE);
     }
+
+    if (pthread_create(&thread[3], NULL, make_data, NULL) != 0)
+    {
+        fprintf(stderr, "Failed to create make_data thread...\n");
+        exit(EXIT_FAILURE);
+    }
 }
 
 void thread_join()
@@ -98,4 +108,5 @@ void thread_join()
     pthread_join(thread[0], NULL);
     pthread_join(thread[1], NULL);
     pthread_join(thread[2], NULL);
+    pthread_join(thread[3], NULL);
 }

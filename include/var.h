@@ -111,6 +111,8 @@ extern uint8_t NUM_CHIMNEY;
 extern uint16_t SYNC_TIME;
 extern int32_t sensor_data[MAX_NUM];
 extern pthread_t thread[MAX_THREAD];
+
 extern struct tm current_time;
+extern time_t now, before_now, produce_time;
 
 #endif

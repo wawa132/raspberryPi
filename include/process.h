@@ -3,20 +3,23 @@
 
 #include "var.h"
 #include "crc16.h"
+#include "queue.h"
 #include "database.h"
 
-void process_5sec();
-void process_5min();
-void process_30min();
+void *make_data();
+
+void process_5sec(time_t *datetime);
+void process_5min(time_t *datetime);
+void process_30min(time_t *datetime);
 
 void update_5sec_data();
 void update_5sec_state();
-void update_5sec_relation();
+void update_5sec_relation(time_t *datetime);
 
 void update_5min_data();
-void update_5min_state();
-void update_5min_relation();
+void update_5min_state(time_t *datetime);
+void update_5min_relation(time_t *datetime);
 
-void update_tdah(int seg, int off);
+void update_tdah(time_t *datetime, int seg, int off);
 
 #endif

@@ -161,5 +161,5 @@ CMakeFiles/gateway.dir/src/main.c.o: /home/pi/gateway/src/main.c \
  /usr/include/mariadb/mariadb_stmt.h /home/pi/gateway/include/hash.h \
  /home/pi/gateway/include/database.h /home/pi/gateway/include/rawdata.h \
  /home/pi/gateway/include/process.h /home/pi/gateway/include/crc16.h \
- /home/pi/gateway/include/server.h /home/pi/gateway/include/queue.h \
+ /home/pi/gateway/include/queue.h /home/pi/gateway/include/server.h \
  /home/pi/gateway/include/client.h

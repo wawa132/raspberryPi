@@ -2,7 +2,7 @@
 
 int32_t sensor_data[MAX_NUM];
 
-void *make_data()
+void *sensor_thread()
 {
     while (RUNNING)
     {
