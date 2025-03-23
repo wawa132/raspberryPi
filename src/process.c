@@ -877,29 +877,18 @@ void update_tdah(time_t *datetime, int seg, int off)
             printf("%s(30분TDAH) %s%s\n", insertTime_str, buffer, crcBuffer);
 
         // TDAH 테이블에 저장
-        int send = 0, off = 0;
+        int send = 0;
         if (seg == 1)
         {
             if (TOFH > 0 && off)
-            {
                 send = 1;
-                off = 1;
-            }
             else if (TOFH > 0 && !off)
-            {
                 send = 0;
-                off = 1;
-            }
             else if (c->send_mode == 0) // 30분 전송모드에 5분 자료는 전송처리
-            {
                 send = 1;
-                off = 0;
-            }
             else
-            {
                 send = 0;
-                off = 0;
-            }
+
             snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", %d, \"%s\", \"%s\", \"%s\", %d, %d);",
                      insertTime_str, off, "TDAH", buffer + 4, crcBuffer, i + 1, send);
 
@@ -919,25 +908,14 @@ void update_tdah(time_t *datetime, int seg, int off)
         else
         {
             if (TOFH > 0 && off)
-            {
                 send = 1;
-                off = 1;
-            }
             else if (TOFH > 0 && !off)
-            {
                 send = 0;
-                off = 1;
-            }
             else if (c->send_mode == 0) // 30분 전송모드에 5분 자료는 전송처리
-            {
                 send = 1;
-                off = 0;
-            }
             else
-            {
                 send = 0;
-                off = 0;
-            }
+
             snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", %d, \"%s\", \"%s\", \"%s\", %d, %d);",
                      insertTime_str, off, "TDAH", buffer + 4, crcBuffer, i + 1, send);
 
@@ -1650,9 +1628,6 @@ void update_tofh(time_t *begin, time_t *end, int seg)
         }
     }
 
-    // TOFH 전원단절 생성 데이터 전송할 큐에 담기
-    enqueue_tofh_to_transmit(begin);
-
     // 30일 전 데이터 삭제
     time_t delete_t = *end;
     delete_t -= (DAYSEC * 30);
@@ -1669,4 +1644,7 @@ void update_tofh(time_t *begin, time_t *end, int seg)
 
     execute_query(conn, query_str);
     release_conn(conn); // 데이터베이스 연결 해제
+
+    // TOFH 전원단절 생성 데이터 전송할 큐에 담기
+    enqueue_tofh_to_transmit(begin);
 }

@@ -11,9 +11,7 @@ void *tcp_client()
         for (int i = 0; i < NUM_CHIMNEY; i++)
         {
             isData_to_send(i);
-            usleep(10000); // 10msec delay
         }
-
         sleep(1);
     }
 
@@ -37,7 +35,7 @@ void isData_to_send(int i)
             break;
         }
 
-        int send_result = send_data_to_server(&sq, ci->sv_ip, ci->sv_port);
+        int send_result = send_data_to_server(sq, ci->sv_ip, ci->sv_port);
         if (send_result == 0 || send_result == -1)
         {
             if (send_result == 0)
@@ -134,7 +132,10 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
             printf("client-socket data transmit timeout(attempt %d)\n", attempt + 1);
 
             if (attempt == 1)
+            {
+                close(clntfd);
                 return -1;
+            }
             else
                 continue;
         }
@@ -142,7 +143,10 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
         {
             printf("client-socket data transmit failed...(attempt %d)\n", attempt + 1);
             if (attempt == 1)
+            {
+                close(clntfd);
                 return -1;
+            }
             else
                 continue;
         }
@@ -153,16 +157,54 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
             ssize_t recv_bytes = recv(clntfd, recv_buffer, BUFFER_SIZE, 0);
             if (recv_bytes > 0) // 데이터 수신 처리
             {
-                if (handle_response(recv_buffer, recv_bytes) == 0)
-                    return 0;
+                if (recv_bytes == 1)
+                {
+                    if (recv_buffer[0] == ACK)
+                    {
+                        printf("client-socket received ACK\n");
+                        send(clntfd, &EOT, 1, 0);
+                        close(clntfd);
+
+                        return 0;
+                    }
+                    else if (recv_buffer[0] == NAK)
+                    {
+                        printf("client-socket received NAK\n");
+
+                        if (attempt == 1)
+                        {
+                            close(clntfd);
+                            return -1;
+                        }
+
+                        break;
+                    }
+                    else
+                    {
+                        printf("client-socket received unknown data: %02X\n", recv_buffer[0]);
+
+                        if (attempt == 1)
+                        {
+                            close(clntfd);
+                            return -1;
+                        }
+
+                        break;
+                    }
+                }
                 else
-                    break;
+                {
+                    printf("client-socket received byte: %ld\n", recv_bytes);
+                }
             }
             else if (recv_bytes < 0 && errno == EWOULDBLOCK)
             {
                 printf("client-socket data received timeout(attempt %d)\n", attempt + 1);
                 if (attempt == 1)
+                {
+                    close(clntfd);
                     return -2;
+                }
 
                 break;
             }
@@ -170,7 +212,10 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
             {
                 printf("client-socket data recieved failed...(attempt %d)\n", attempt + 1);
                 if (attempt == 1)
+                {
+                    close(clntfd);
                     return -2;
+                }
 
                 break;
             }
@@ -179,8 +224,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
 
     // close the socket
     close(clntfd);
-
-    return 0;
+    return -1;
 }
 
 int handle_response(uint8_t *data, ssize_t byte_num)
@@ -204,6 +248,6 @@ int handle_response(uint8_t *data, ssize_t byte_num)
         }
     }
 
-    printf("client-socket received large byte: %d\n", byte_num);
+    printf("client-socket received large byte: %ld\n", byte_num);
     return -1;
 }

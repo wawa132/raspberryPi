@@ -232,7 +232,7 @@ void execute_query(MYSQL *conn, const char *query_str)
 void enqueue_tdah_to_transmit(time_t *datetime)
 {
     // rangeTime_str 은 TNOH 발생으로 인해 FIV 자료가 필요할 때, 시작 시점을 기록하는 버퍼
-    char query_str[300], update_str[300], loadTime_str[300], rangeTime_str[300];
+    char query_str[300], update_str[300], loadTime_str[50], rangeTime_str[50];
 
     struct tm *load_time = localtime(datetime);
     snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
@@ -314,7 +314,7 @@ void enqueue_tdah_to_transmit(time_t *datetime)
 
 void enqueue_tddh_to_transmit(time_t *datetime)
 {
-    char query_str[300], update_str[300], loadTime_str[300];
+    char query_str[300], update_str[300], loadTime_str[50];
 
     struct tm *load_time = localtime(datetime);
     snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
@@ -393,7 +393,7 @@ void enqueue_tddh_to_transmit(time_t *datetime)
 
 void enqueue_tofh_to_transmit(time_t *datetime)
 {
-    char query_str[300], update_str[300], loadTime_str[300];
+    char query_str[300], update_str[300], loadTime_str[50];
 
     struct tm *load_time = localtime(datetime);
     snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
@@ -444,7 +444,7 @@ void enqueue_tofh_to_transmit(time_t *datetime)
 
 void enqueue_miss_to_transmit(time_t *datetime)
 {
-    char query_str[300], update_str[300], loadTime_str[300], rangeTime_str[300];
+    char query_str[300], update_str[300], loadTime_str[50], rangeTime_str[50];
 
     struct tm *load_time = localtime(datetime);
     snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
