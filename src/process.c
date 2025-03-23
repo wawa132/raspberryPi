@@ -32,7 +32,7 @@ void *make_data()
 
                 if (produce_time % HAFSEC == 0)
                 {
-                    process_30min(&produce_time); // 30분 데이터 생성
+                    process_30min(&produce_time, 0); // 30분 데이터 생성
                     update_tdah(&produce_time, 0, 0);
                     update_tnoh(&produce_time);
                 }
@@ -224,9 +224,9 @@ void process_5min(time_t *datetime)
 {
     update_5min_data();
 
-    update_5min_state(datetime);
+    update_5min_state(datetime, 0);
 
-    update_5min_relation(datetime);
+    update_5min_relation(datetime, 0);
 }
 
 void update_5min_data()
@@ -240,7 +240,7 @@ void update_5min_data()
     sum_cnt = 0; // 합계 카운터 초기화
 }
 
-void update_5min_state(time_t *datetime)
+void update_5min_state(time_t *datetime, int off)
 {
     char query_str[BUFFER_SIZE], beginTime_str[300], endTime_str[300], insertTime_str[300];
 
@@ -369,8 +369,9 @@ void update_5min_state(time_t *datetime)
                 else
                     f->FIV.run = 0;
 
-                printf("[%s](5분) %s(%s) (상태정보)정상 %2d | 비정상 %2d | 통신불량 %2d | 전원단절 %2d | 점검중 %2d\n",
-                       insertTime_str, f->name, f->item, nrm, low, com, off, chk);
+                if (!off)
+                    printf("[%s](5분) %s(%s) (상태정보)정상 %2d | 비정상 %2d | 통신불량 %2d | 전원단절 %2d | 점검중 %2d\n",
+                           insertTime_str, f->name, f->item, nrm, low, com, off, chk);
             }
             mysql_free_result(res);
         }
@@ -378,7 +379,7 @@ void update_5min_state(time_t *datetime)
     release_conn(conn); // 데이터베이스 연결 해제
 }
 
-void update_5min_relation(time_t *datetime)
+void update_5min_relation(time_t *datetime, int off)
 {
     char query_str[BUFFER_SIZE], insertTime_str[300], deleteTime_str[300];
 
@@ -520,8 +521,9 @@ void update_5min_relation(time_t *datetime)
             else
                 f->delay.bfiv_run = 0;
 
-            printf("[%s](5분) %s(%s) (방지정상)%2d (9: 가동유예, 8: 중지유예, 3: 해당없음, 1: 정상, 0: 비정상)\n",
-                   insertTime_str, f->name, f->item, f->FIV.rel);
+            if (!off)
+                printf("[%s](5분) %s(%s) (방지정상)%2d (9: 가동유예, 8: 중지유예, 3: 해당없음, 1: 정상, 0: 비정상)\n",
+                       insertTime_str, f->name, f->item, f->FIV.rel);
 
             // 5분 상태 정보 데이터 베이스 저장
             snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05stat (tim_date, fac_id, fac, _data, stat, run, rel, chim_id) VALUES (\"%s\", %d, \"%s\", %d, %d, %d, %d, %d);",
@@ -536,37 +538,40 @@ void update_5min_relation(time_t *datetime)
 
     release_conn(conn); // 데이터베이스 연결 해제
 
-    for (int i = 0; i < NUM_CHIMNEY; i++)
+    if (!off)
     {
-        CHIMNEY *c = &chimney[i];
-
-        for (int j = 0; j < c->num_facility; j++)
+        for (int i = 0; i < NUM_CHIMNEY; i++)
         {
-            FACILITY *f = &(c->facility[j]);
-            int32_t data = f->FIV.value;
-            int16_t upper, lower;
+            CHIMNEY *c = &chimney[i];
 
-            if (data < 0)
+            for (int j = 0; j < c->num_facility; j++)
             {
-                data = abs(data);
-                upper = data / 100;
-                lower = data % 100;
-                if (upper < 10)
-                    printf("%s (5분) %5s(%1s):  -%1d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d | 가동유예 %2d | 중지유예 %2d\n",
-                           insertTime_str, f->name, f->item, upper, lower, f->FIV.stat, f->FIV.run, f->FIV.rel, f->delay.ond, f->delay.ofd);
+                FACILITY *f = &(c->facility[j]);
+                int32_t data = f->FIV.value;
+                int16_t upper, lower;
+
+                if (data < 0)
+                {
+                    data = abs(data);
+                    upper = data / 100;
+                    lower = data % 100;
+                    if (upper < 10)
+                        printf("%s (5분) %5s(%1s):  -%1d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d | 가동유예 %2d | 중지유예 %2d\n",
+                               insertTime_str, f->name, f->item, upper, lower, f->FIV.stat, f->FIV.run, f->FIV.rel, f->delay.ond, f->delay.ofd);
+                    else
+                        printf("%s (5분) %5s(%1s): -%2d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d | 가동유예 %2d | 중지유예 %2d\n",
+                               insertTime_str, f->name, f->item, upper, lower, f->FIV.stat, f->FIV.run, f->FIV.rel, f->delay.ond, f->delay.ofd);
+                }
                 else
-                    printf("%s (5분) %5s(%1s): -%2d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d | 가동유예 %2d | 중지유예 %2d\n",
-                           insertTime_str, f->name, f->item, upper, lower, f->FIV.stat, f->FIV.run, f->FIV.rel, f->delay.ond, f->delay.ofd);
+                    printf("%s (5분) %5s(%1s): %3d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d | 가동유예 %2d | 중지유예 %2d\n",
+                           insertTime_str, f->name, f->item, f->FIV.value / 100, f->FIV.value % 100, f->FIV.stat, f->FIV.run, f->FIV.rel, f->delay.ond, f->delay.ofd);
             }
-            else
-                printf("%s (5분) %5s(%1s): %3d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d | 가동유예 %2d | 중지유예 %2d\n",
-                       insertTime_str, f->name, f->item, f->FIV.value / 100, f->FIV.value % 100, f->FIV.stat, f->FIV.run, f->FIV.rel, f->delay.ond, f->delay.ofd);
+            printf("\n");
         }
-        printf("\n");
     }
 }
 
-void process_30min(time_t *datetime)
+void process_30min(time_t *datetime, int off)
 {
     char query_str[BUFFER_SIZE], beginTime_str[300], endTime_str[300], insertTime_str[300];
 
@@ -714,7 +719,8 @@ void process_30min(time_t *datetime)
                     // rf->TNOH = 1; // TNOH 생성 방지-송풍 시설 -> 25-02-25 관계시설 정상여부에 해당하는 시설에 한해서.
                 }
 
-                printf("[%s](30분) %s(%s) (상태정보)정상 %2d | 비정상 %2d | 통신불량 %2d | 전원단절 %2d | 점검중 %2d\n (방지정상)가동유예 %2d | 중지유예 %2d | 비정상 %2d | 정상 %2d | 해당없음 %2d\n", insertTime_str, f->name, f->item, nrm, low, com, off, chk, ond, ofd, err, okk, naa);
+                if (!off)
+                    printf("[%s](30분) %s(%s) (상태정보)정상 %2d | 비정상 %2d | 통신불량 %2d | 전원단절 %2d | 점검중 %2d\n (방지정상)가동유예 %2d | 중지유예 %2d | 비정상 %2d | 정상 %2d | 해당없음 %2d\n", insertTime_str, f->name, f->item, nrm, low, com, off, chk, ond, ofd, err, okk, naa);
 
                 // 30분 상태 정보 데이터 베이스 저장
                 snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30stat (tim_date, fac_id, fac, _data, stat, run, rel, chim_id) VALUES (\"%s\", %d, \"%s\", %d, %d, %d, %d, %d);", insertTime_str, j, f->name, f->HAF.value, f->HAF.stat, f->HAF.run, f->HAF.rel, i + 1);
@@ -727,35 +733,37 @@ void process_30min(time_t *datetime)
     }
 
     release_conn(conn); // 데이터베이스 연결 해제
-
-    for (int i = 0; i < NUM_CHIMNEY; i++)
+    if (!off)
     {
-        CHIMNEY *c = &chimney[i];
-
-        for (int j = 0; j < c->num_facility; j++)
+        for (int i = 0; i < NUM_CHIMNEY; i++)
         {
+            CHIMNEY *c = &chimney[i];
 
-            FACILITY *f = &(c->facility[j]);
-            int32_t data = f->HAF.value;
-            int16_t upper, lower;
-
-            if (data < 0)
+            for (int j = 0; j < c->num_facility; j++)
             {
-                data = abs(data);
-                upper = data / 100;
-                lower = data % 100;
-                if (upper < 10)
-                    printf("%s (30분) %5s(%1s):  -%1d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d\n",
-                           insertTime_str, f->name, f->item, upper, lower, f->HAF.stat, f->HAF.run, f->HAF.rel);
+
+                FACILITY *f = &(c->facility[j]);
+                int32_t data = f->HAF.value;
+                int16_t upper, lower;
+
+                if (data < 0)
+                {
+                    data = abs(data);
+                    upper = data / 100;
+                    lower = data % 100;
+                    if (upper < 10)
+                        printf("%s (30분) %5s(%1s):  -%1d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d\n",
+                               insertTime_str, f->name, f->item, upper, lower, f->HAF.stat, f->HAF.run, f->HAF.rel);
+                    else
+                        printf("%s (30분) %5s(%1s): -%2d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d\n",
+                               insertTime_str, f->name, f->item, upper, lower, f->HAF.stat, f->HAF.run, f->HAF.rel);
+                }
                 else
-                    printf("%s (30분) %5s(%1s): -%2d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d\n",
-                           insertTime_str, f->name, f->item, upper, lower, f->HAF.stat, f->HAF.run, f->HAF.rel);
+                    printf("%s (30분) %5s(%1s): %3d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d\n",
+                           insertTime_str, f->name, f->item, f->HAF.value / 100, f->HAF.value % 100, f->HAF.stat, f->HAF.run, f->HAF.rel);
             }
-            else
-                printf("%s (30분) %5s(%1s): %3d.%02u | 상태정보 %1d | 가동유무 %1d | 방지정상 %1d\n",
-                       insertTime_str, f->name, f->item, f->HAF.value / 100, f->HAF.value % 100, f->HAF.stat, f->HAF.run, f->HAF.rel);
+            printf("\n");
         }
-        printf("\n");
     }
 }
 
@@ -1074,7 +1082,7 @@ void update_tnoh(time_t *datetime)
 void process_day(time_t *datetime)
 {
     // 일일 데이터 생성
-    char query_str[BUFFER_SIZE], endTime_str[300], beginTime_str[300];
+    char query_str[BUFFER_SIZE], endTime_str[300], beginTime_str[300], deleteTime_str[300];
 
     struct tm *insert_time = localtime(datetime); // 현재 시간(아마도 다음날 0시 0분 0초)
     snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d %02d:%02d:%02d", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday, insert_time->tm_hour, insert_time->tm_min, insert_time->tm_sec);
@@ -1083,6 +1091,11 @@ void process_day(time_t *datetime)
     begin_t -= DAYSEC; // 하루전 시간
     struct tm begin_time = *localtime(&begin_t);
     snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
+
+    time_t delete_t = *datetime;
+    delete_t -= (DAYSEC * 3); // 하루전 시간
+    struct tm delete_time = *localtime(&delete_t);
+    snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d", delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday);
 
     printf("%s 일일마감(5분) 생성 시점: %s\n", endTime_str, beginTime_str);
 
@@ -1122,9 +1135,9 @@ void process_day(time_t *datetime)
                 if (total <= FIVTDDH)
                     f->SFIV.off = (FIVTDDH - total) + f->SFIV.off;
 
-                // j번 시설 하루 전 5분 상태 정보 클리어
+                // j번 시설 3일 전 5분 상태 정보 클리어
                 snprintf(query_str, sizeof(query_str), "DELETE FROM t_05stat WHERE fac_id = %d AND chim_id = %d AND tim_date < \'%s%%\';",
-                         j, i + 1, beginTime_str);
+                         j, i + 1, deleteTime_str);
                 execute_query(conn, query_str);
             }
 
@@ -1179,9 +1192,9 @@ void process_day(time_t *datetime)
                 if (total <= HAFTDDH)
                     f->SHAF.off = (HAFTDDH - total) + f->SHAF.off;
 
-                // j번 시설 하루 전 30분 상태 정보 클리어
+                // j번 시설 3일 전 30분 상태 정보 클리어
                 snprintf(query_str, sizeof(query_str), "DELETE FROM t_30stat WHERE fac_id = %d AND chim_id = %d AND tim_date < \'%s%%\';",
-                         j, i + 1, beginTime_str);
+                         j, i + 1, deleteTime_str);
                 execute_query(conn, query_str);
             }
             mysql_free_result(res);
@@ -1462,6 +1475,8 @@ void process_off(TOFH_TIME t)
             process_day(&begin_fiv);
             update_tddh(&begin_fiv, 1);
             update_tddh(&begin_fiv, 0);
+
+            enqueue_tddh_to_transmit(&begin_fiv);
         }
 
         // 다음날 00시 00분부터 시작으로 변경
@@ -1513,8 +1528,8 @@ void update_tofh(time_t *begin, time_t *end, int seg)
     {
         for (time_t datetime = *begin; datetime <= *end; datetime += FIVSEC)
         {
-            update_5min_state(&datetime);
-            update_5min_relation(&datetime);
+            update_5min_state(&datetime, 1);
+            update_5min_relation(&datetime, 1);
             update_tdah(&datetime, 1, 1);
 
             enqueue_tdah_to_transmit(&datetime);
@@ -1525,7 +1540,7 @@ void update_tofh(time_t *begin, time_t *end, int seg)
     {
         for (time_t datetime = *begin; datetime <= *end; datetime += HAFSEC)
         {
-            process_30min(&datetime);
+            process_30min(&datetime, 1);
             update_tdah(&datetime, 0, 1);
             update_tnoh(&datetime);
 
