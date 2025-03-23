@@ -36,6 +36,8 @@ void *make_data()
                     update_tdah(&produce_time, 0, 0);
                     update_tnoh(&produce_time);
                 }
+
+                enqueue_tdah_to_transmit(&produce_time);
             }
 
             // 일일마감 데이터 확인
@@ -46,6 +48,8 @@ void *make_data()
                 process_day(&produce_time);
                 update_tddh(&produce_time, 1); // 5분 일일마감 생성
                 update_tddh(&produce_time, 0); // 30분 일일마감 생성
+
+                enqueue_tddh_to_transmit(&produce_time);
             }
 
             free(miner);   // free memory
@@ -1535,6 +1539,7 @@ void update_tofh(time_t *begin, time_t *end, int seg)
             update_5min_relation(&datetime);
             update_tdah(&datetime, 1, 1);
 
+            enqueue_tdah_to_transmit(&datetime);
             usleep(10000); // 10msec delay
         }
     }
@@ -1546,6 +1551,7 @@ void update_tofh(time_t *begin, time_t *end, int seg)
             update_tdah(&datetime, 0, 1);
             update_tnoh(&datetime);
 
+            enqueue_tdah_to_transmit(&datetime);
             usleep(10000); // 10msec delay
         }
     }
@@ -1643,6 +1649,9 @@ void update_tofh(time_t *begin, time_t *end, int seg)
             execute_query(conn, query_str);
         }
     }
+
+    // TOFH 전원단절 생성 데이터 전송할 큐에 담기
+    enqueue_tofh_to_transmit(begin);
 
     // 30일 전 데이터 삭제
     time_t delete_t = *end;

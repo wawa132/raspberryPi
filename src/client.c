@@ -10,7 +10,8 @@ void *tcp_client()
     {
         for (int i = 0; i < NUM_CHIMNEY; i++)
         {
-            isMessageToSend(i);
+            isData_to_send(i);
+            usleep(10000); // 10msec delay
         }
 
         sleep(1);
@@ -19,57 +20,51 @@ void *tcp_client()
     return NULL;
 }
 
-void isMessageToSend(int i)
+void isData_to_send(int i)
 {
     DATA_Q *q = &data_q[i];
     INFORM *ci = &info[i];
 
     while (!isEmpty(q))
     {
-        if (q->cnt == 0)
+        MYSQL *conn = get_conn();
+        SEND_Q *sq = dequeue(q);
+
+        // if queue mem allocate failed, break
+        if (sq == NULL)
         {
-            return;
-        }
-        else
-        {
-            MYSQL *conn = get_conn();
-            SEND_Q *sq = dequeue(q);
-
-            // if queue mem allocate failed, goto first code
-            if (sq == NULL)
-            {
-                release_conn(conn);
-                continue;
-            }
-
-            int send_result = send_message_to_server(sq, ci->sv_ip, ci->sv_port);
-            if (send_result == 0 || send_result == -1)
-            {
-                if (send_result == 0)
-                    printf("Succeccfully send the message to the server...\n");
-                else
-                    printf("Failed to send the message to the server...\n");
-
-                // update database send column = 1(send complete)
-                execute_query(conn, sq->query_str);
-            }
-            else if (send_result == -2)
-            {
-                printf("Failed to send the message to server cause no response...\n");
-            }
-            else if (send_result == -3)
-            {
-                printf("Failed to send the message to server cause Wrong socket setup...\n");
-            }
-
-            // free mem allocate and release db connection
-            free(sq);
             release_conn(conn);
+            break;
         }
+
+        int send_result = send_data_to_server(&sq, ci->sv_ip, ci->sv_port);
+        if (send_result == 0 || send_result == -1)
+        {
+            if (send_result == 0)
+                printf("Succeccfully send the message to the server...\n");
+            else
+                printf("Failed to send the message to the server...\n");
+
+            // update database send column = 1(send complete)
+            if (!(strncmp(sq->query_str, ";", 1) == 0))
+                execute_query(conn, sq->query_str);
+        }
+        else if (send_result == -2)
+        {
+            printf("Failed to send the message to server cause no response...\n");
+        }
+        else if (send_result == -3)
+        {
+            printf("Failed to send the message to server cause Wrong socket setup...\n");
+        }
+
+        // free mem allocate and release db connection
+        free(sq);
+        release_conn(conn);
     }
 }
 
-int send_message_to_server(DATA_Q *q, char *IP, uint16_t PORT)
+int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
 {
     struct sockaddr_in servaddr;
 
@@ -122,7 +117,6 @@ int send_message_to_server(DATA_Q *q, char *IP, uint16_t PORT)
 
         return -3;
     }
-
     if (setsockopt(clntfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
     {
         printf("client-socket receive timeout setup failed...\n");
@@ -134,11 +128,82 @@ int send_message_to_server(DATA_Q *q, char *IP, uint16_t PORT)
     // send the message to server, if failed send try one more...
     for (int attempt = 0; attempt < 2; attempt++)
     {
-        /* code */
+        ssize_t send_byte = send(clntfd, q->message, q->message_len, 0);
+        if (send_byte < 0 && errno == EWOULDBLOCK) // 데이터 전송 타임아웃
+        {
+            printf("client-socket data transmit timeout(attempt %d)\n", attempt + 1);
+
+            if (attempt == 1)
+                return -1;
+            else
+                continue;
+        }
+        else if (send_byte < 0) // 데이터 전송 실패
+        {
+            printf("client-socket data transmit failed...(attempt %d)\n", attempt + 1);
+            if (attempt == 1)
+                return -1;
+            else
+                continue;
+        }
+
+        while (RUNNING)
+        {
+            uint8_t recv_buffer[BUFFER_SIZE];
+            ssize_t recv_bytes = recv(clntfd, recv_buffer, BUFFER_SIZE, 0);
+            if (recv_bytes > 0) // 데이터 수신 처리
+            {
+                if (handle_response(recv_buffer, recv_bytes) == 0)
+                    return 0;
+                else
+                    break;
+            }
+            else if (recv_bytes < 0 && errno == EWOULDBLOCK)
+            {
+                printf("client-socket data received timeout(attempt %d)\n", attempt + 1);
+                if (attempt == 1)
+                    return -2;
+
+                break;
+            }
+            else if (recv_bytes <= 0)
+            {
+                printf("client-socket data recieved failed...(attempt %d)\n", attempt + 1);
+                if (attempt == 1)
+                    return -2;
+
+                break;
+            }
+        }
     }
 
     // close the socket
     close(clntfd);
 
     return 0;
+}
+
+int handle_response(uint8_t *data, ssize_t byte_num)
+{
+    if (byte_num == 1)
+    {
+        if (data[0] == ACK)
+        {
+            printf("client-socket received ACK\n");
+            return 0;
+        }
+        else if (data[0] == NAK)
+        {
+            printf("client-socket received NAK\n");
+            return -1;
+        }
+        else
+        {
+            printf("client-socket received unknown data: %02X\n", data[0]);
+            return -1;
+        }
+    }
+
+    printf("client-socket received large byte: %d\n", byte_num);
+    return -1;
 }

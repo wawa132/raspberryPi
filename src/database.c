@@ -228,3 +228,446 @@ void execute_query(MYSQL *conn, const char *query_str)
         exit(EXIT_FAILURE);
     }
 }
+
+void enqueue_tdah_to_transmit(time_t *datetime)
+{
+    // rangeTime_str 은 TNOH 발생으로 인해 FIV 자료가 필요할 때, 시작 시점을 기록하는 버퍼
+    char query_str[300], update_str[300], loadTime_str[300], rangeTime_str[300];
+
+    struct tm *load_time = localtime(datetime);
+    snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             load_time->tm_year + 1900, load_time->tm_mon + 1, load_time->tm_mday,
+             load_time->tm_hour, load_time->tm_min, load_time->tm_sec);
+
+    time_t range_t = *datetime;
+    range_t -= HAFSEC;
+    struct tm range_time = *localtime(&range_t);
+    snprintf(rangeTime_str, sizeof(rangeTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             range_time.tm_year + 1900, range_time.tm_mon + 1, range_time.tm_mday,
+             range_time.tm_hour, range_time.tm_min, range_time.tm_sec);
+
+    for (int i = 0; i < NUM_CHIMNEY; i++)
+    {
+        CHIMNEY *c = &chimney[i];
+        DATA_Q *q = &data_q[i];
+
+        if (c->send_mode == 0) // 30min data transmit
+        {
+            // get 30min tdah
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tdah WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tdah SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) > 0)
+            {
+                // get TNOH data
+                snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tnoh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+                snprintf(update_str, sizeof(update_str), "UPDATE t_05tnoh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+                if (enqueue_transmit_data(q, query_str, update_str) > 0)
+                {
+                    // get FIV data that evidence TNOH
+                    snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tdah WHERE tim_date BETWEEN \'%s\' AND \'%s\' AND chim_id = %d;", rangeTime_str, loadTime_str, i + 1);
+                    snprintf(update_str, sizeof(update_str), ";");
+
+                    if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                        printf("=== No exists TDAH(HAF) evidence data(FIV) to transmit===\n");
+                }
+                else
+                    printf("=== No exists TNOH data to transmit ===\n");
+            }
+            else
+                printf("=== No exists TDAH(HAF) data to transmit ===\n");
+        }
+        else if (c->send_mode == 1) // 5min, 30min data transmit
+        {
+            // get 5min tdah
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tdah WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tdah SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TDAH(FIV) data to transmit ===\n");
+
+            // get 30min tdah
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tdah WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tdah SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TDAH(HAF) data to transmit ===\n");
+        }
+        else // 5min data transmit
+        {
+            // get 5min tdah
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tdah WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tdah SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TDAH(FIV) data to transmit ===\n");
+        }
+
+        // miss_send_data_check
+        if (c->time_resend == 9999 || (load_time->tm_hour == (c->time_resend / 100) && load_time->tm_min == (c->time_resend % 100)))
+        {
+            enqueue_miss_to_transmit(datetime);
+        }
+    }
+}
+
+void enqueue_tddh_to_transmit(time_t *datetime)
+{
+    char query_str[300], update_str[300], loadTime_str[300];
+
+    struct tm *load_time = localtime(datetime);
+    snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             load_time->tm_year + 1900, load_time->tm_mon + 1, load_time->tm_mday,
+             load_time->tm_hour, load_time->tm_min, load_time->tm_sec);
+
+    for (int i = 0; i < NUM_CHIMNEY; i++)
+    {
+        CHIMNEY *c = &chimney[i];
+        DATA_Q *q = &data_q[i];
+
+        if (c->send_mode == 0) // 30min data transmit
+        {
+            // get 30min tddh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tddh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TDDH(HAF) data to transmit ===\n");
+
+            // get 30min tofh-day
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh_day SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH-DAY(HAF) data to transmit ===\n");
+        }
+        else if (c->send_mode == 1) // 5min, 30min data transmit
+        {
+            // get 5min tddh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tddh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TDDH(FIV) data to transmit ===\n");
+
+            // get 5min tofh-day
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh_day SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH-DAY(FIV) data to transmit ===\n");
+
+            // get 30min tddh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tddh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TDDH(HAF) data to transmit ===\n");
+
+            // get 30min tofh-day
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh_day SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH-DAY(HAF) data to transmit ===\n");
+        }
+        else // 5min data transmit
+        {
+            // get 5min tddh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tddh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TDDH(FIV) data to transmit ===\n");
+
+            // get 5min tofh-day
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh_day SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH-DAY(FIV) data to transmit ===\n");
+        }
+    }
+}
+
+void enqueue_tofh_to_transmit(time_t *datetime)
+{
+    char query_str[300], update_str[300], loadTime_str[300];
+
+    struct tm *load_time = localtime(datetime);
+    snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             load_time->tm_year + 1900, load_time->tm_mon + 1, load_time->tm_mday,
+             load_time->tm_hour, load_time->tm_min, load_time->tm_sec);
+
+    for (int i = 0; i < NUM_CHIMNEY; i++)
+    {
+        CHIMNEY *c = &chimney[i];
+        DATA_Q *q = &data_q[i];
+
+        if (c->send_mode == 0) // 30min data transmit
+        {
+            // get 30min tofh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH(HAF) data to transmit ===\n");
+        }
+        else if (c->send_mode == 1) // 5min, 30min data transmit
+        {
+            // get 5min tofh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH(FIV) data to transmit ===\n");
+
+            // get 30min tofh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH(HAF) data to transmit ===\n");
+        }
+        else // 5min data transmit
+        {
+            // get 5min tofh
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh SET send = 1 WHERE tim_date = \'%s\' AND chim_id = %d AND send = 0;", loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists TOFH(FIV) data to transmit ===\n");
+        }
+    }
+}
+
+void enqueue_miss_to_transmit(time_t *datetime)
+{
+    char query_str[300], update_str[300], loadTime_str[300], rangeTime_str[300];
+
+    struct tm *load_time = localtime(datetime);
+    snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             load_time->tm_year + 1900, load_time->tm_mon + 1, load_time->tm_mday,
+             load_time->tm_hour, load_time->tm_min, load_time->tm_sec);
+
+    time_t range_t = *datetime;
+    range_t -= (DAYSEC * 3);
+    struct tm range_time = *localtime(&range_t);
+    snprintf(rangeTime_str, sizeof(rangeTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             range_time.tm_year + 1900, range_time.tm_mon + 1, range_time.tm_mday,
+             range_time.tm_hour, range_time.tm_min, range_time.tm_sec);
+
+    for (int i = 0; i < NUM_CHIMNEY; i++)
+    {
+        CHIMNEY *c = &chimney[i];
+        DATA_Q *q = &data_q[i];
+
+        if (c->send_mode == 0) // 30min data transmit
+        {
+            // get 30min TFDH
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT('TFDH', _data) FROM t_30tdah WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tdah SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TFDH(HAF) data to transmit ===\n");
+
+            // get TNOH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tnoh WHERE WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tnoh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TNOH data to transmit ===\n");
+
+            // get TOFH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(HAF) data to transmit ===\n");
+
+            // get TOFH-DAY data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh_day SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(HAF)-DAY data to transmit ===\n");
+
+            // get TDDH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tddh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TDDH(HAF)-DAY data to transmit ===\n");
+        }
+        else if (c->send_mode == 1) // 5min, 30min data transmit
+        {                           // get 5min TFDH
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT('TFDH', _data) FROM t_05tdah WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tdah SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TFDH(FIV) data to transmit ===\n");
+
+            // get TOFH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(FIV) data to transmit ===\n");
+
+            // get TOFH-DAY data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh_day SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(FIV)-DAY data to transmit ===\n");
+
+            // get TDDH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tddh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TDDH(FIV) data to transmit ===\n");
+
+            // get 30min TFDH
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT('TFDH', _data) FROM t_30tdah WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tdah SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TFDH(HAF) data to transmit ===\n");
+
+            // get TNOH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tnoh WHERE WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tnoh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TNOH data to transmit ===\n");
+
+            // get TOFH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(HAF) data to transmit ===\n");
+
+            // get TOFH-DAY data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tofh_day SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(HAF)-DAY data to transmit ===\n");
+
+            // get TDDH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_30tddh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TDDH(HAF)-DAY data to transmit ===\n");
+        }
+        else // 5min data transmit
+        {
+            // get 5min TFDH
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT('TFDH', _data) FROM t_05tdah WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tdah SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TFDH(FIV) data to transmit ===\n");
+
+            // get TOFH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(FIV) data to transmit ===\n");
+
+            // get TOFH-DAY data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tofh_day SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TOFH(FIV)-DAY data to transmit ===\n");
+
+            // get TDDH data
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+            snprintf(update_str, sizeof(update_str), "UPDATE t_05tddh SET send = 1 WHERE tim_date >= \'%s\' AND tim_date < \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadTime_str, i + 1);
+
+            if (enqueue_transmit_data(q, query_str, update_str) < 0)
+                printf("=== No exists MISS TDDH(FIV) data to transmit ===\n");
+        }
+    }
+}
+
+int enqueue_transmit_data(DATA_Q *q, const char *query_str, const char *update_str)
+{
+    MYSQL *conn = get_conn(); // 데이터베이스 연결 획득
+    execute_query(conn, query_str);
+
+    MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
+    if (res == NULL)
+    {
+        printf("쿼리 결과 저장 실패\n");
+        release_conn(conn);
+        return -1;
+    }
+
+    int rows = mysql_num_rows(res);
+    if (rows > 0)
+    {
+        char raw_data[BUFFER_SIZE];
+        uint8_t data[BUFFER_SIZE];
+        int data_len;
+
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(res)))
+        {
+            // 데이터베이스에 저장된 데이터 읽어오기
+            strcpy(raw_data, row[0]);
+            printf("transmit data(ascii): %s\n", raw_data);
+
+            data_len = convert_hex(raw_data, data); // 아스키 코드를 unsigned char 형태(hex) 변환, 길이 리턴
+            if (data_len < 0)
+            {
+                printf("Too short to convert data length.\n");
+            }
+            else
+            {
+                enqueue(q, data, data_len, update_str); // 전송할 데이터 큐에 담기
+                printf("transmit data(hex) with crc: ");
+                for (int i = 0; i < data_len; i++)
+                {
+                    printf("%02X", data[i]);
+                }
+                printf("\n");
+            }
+
+            usleep(10000); // 10msec 딜레이
+        }
+
+        mysql_free_result(res);
+        release_conn(conn);
+
+        return 1;
+    }
+
+    release_conn(conn);
+    return -1;
+}
+
+int convert_hex(const char *asc, uint8_t *hex)
+{
+    size_t num_bytes = strlen(asc);
+    if (num_bytes < 4)
+        return -1;
+
+    uint16_t crc = crc16_ccitt_false((uint8_t *)asc, num_bytes);
+
+    for (int i = 0; i < (int)num_bytes; i++)
+    {
+        hex[i] = (uint8_t)asc[i];
+    }
+
+    hex[num_bytes] = (crc >> 8) & 0xff;
+    hex[num_bytes + 1] = crc & 0xff;
+
+    return (int)num_bytes + 2;
+}
