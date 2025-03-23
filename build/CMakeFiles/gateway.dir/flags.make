@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = -I/home/pi/gateway/include
 
-C_FLAGS = -Wall -Wextra -Wpedantic -std=gnu11
+C_FLAGS = -g -Wall -Wextra -Wpedantic -std=gnu11
 

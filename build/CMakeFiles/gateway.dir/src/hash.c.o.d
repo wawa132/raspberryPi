@@ -158,4 +158,6 @@ CMakeFiles/gateway.dir/src/hash.c.o: /home/pi/gateway/src/hash.c \
  /usr/include/mariadb/mariadb_com.h \
  /usr/include/mariadb/mariadb_version.h /usr/include/mariadb/ma_list.h \
  /usr/include/mariadb/mariadb_ctype.h /usr/include/ctype.h \
- /usr/include/mariadb/mariadb_stmt.h /home/pi/gateway/include/database.h
+ /usr/include/mariadb/mariadb_stmt.h /home/pi/gateway/include/database.h \
+ /home/pi/gateway/include/process.h /home/pi/gateway/include/crc16.h \
+ /home/pi/gateway/include/queue.h

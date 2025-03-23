@@ -6,6 +6,9 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED True)
 
+# 빌드 타입 설정 (디버깅 활성화)
+set(CMAKE_BUILD_TYPE Debug)
+
 # OpenSSL 라이브러리 찾기
 find_package(OpenSSL REQUIRED)
 

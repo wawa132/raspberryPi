@@ -2,6 +2,7 @@
 #define __DATABASE_H__
 
 #include "var.h"
+#include "process.h"
 
 #define DB_HOST "localhost"
 #define DB_USER "root"

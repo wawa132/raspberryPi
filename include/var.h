@@ -33,7 +33,7 @@
 #define BUFFER_SIZE 4095
 #define CHIMNEY_NUM 10
 #define MAX_NUM 100
-#define MAX_THREAD 5
+#define MAX_THREAD 10
 
 #define FIVSEC 300
 #define HAFSEC 1800
@@ -42,29 +42,32 @@
 #define FIVNUM 60
 #define HAFNUM 6
 
-typedef struct MEASURE_RANGE
+#define FIVTDDH 288
+#define HAFTDDH 48
+
+typedef struct
 {
     int32_t min, max, std;
 } M_RANGE;
 
-typedef struct DELAY_TIME
+typedef struct
 {
     uint8_t bsec_run, bfiv_run, lock;
     uint16_t ond, ofd;
 } DELAY_TIME;
 
-typedef struct DATA
+typedef struct
 {
     int32_t value;
     uint8_t stat, run, rel;
 } DATA;
 
-typedef struct STATE
+typedef struct
 {
     uint16_t nrm, low, com, off, chk;
 } STATE;
 
-typedef struct FACILITY
+typedef struct
 {
     char name[6], item[2];
     M_RANGE range;
@@ -75,14 +78,14 @@ typedef struct FACILITY
 
 } FACILITY;
 
-typedef struct UPGRADE
+typedef struct
 {
     char assign_ip[16];
     uint8_t result;
 
 } UPGRADE;
 
-typedef struct INFORM
+typedef struct
 {
     char sv_ip[16], gw_ip[16], model[21], manufacture_code[3],
         version[21], passwd[11], hash[100], ntp_ip[16];
@@ -91,7 +94,7 @@ typedef struct INFORM
 
 } INFORM;
 
-typedef struct CHIMNEY
+typedef struct
 {
     char business[8], chimney[4];
     uint8_t num_facility, send_mode, reboot, TNOH;
@@ -103,6 +106,14 @@ typedef struct CHIMNEY
 
 } CHIMNEY;
 
+typedef struct
+{
+    struct tm off_fiv;
+    struct tm off_haf;
+    struct tm off_now;
+
+} TOFH_TIME;
+
 extern CHIMNEY chimney[CHIMNEY_NUM];
 extern INFORM info[CHIMNEY_NUM];
 
@@ -112,7 +123,8 @@ extern uint16_t SYNC_TIME;
 extern int32_t sensor_data[MAX_NUM];
 extern pthread_t thread[MAX_THREAD];
 
-extern struct tm current_time;
+extern TOFH_TIME off_time[2]; // [0] 부팅 후 전원단절 구간, [1] 서버 시간 동기화 오차로 인한 전원단절 구간
+
 extern time_t now, before_now, produce_time;
 
 #endif
