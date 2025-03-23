@@ -919,7 +919,7 @@ void update_tdah(time_t *datetime, int seg, int off)
                 send = 1;
             else if (TOFH > 0 && !off)
                 send = 0;
-            else if (c->send_mode == 0) // 30분 전송모드에 5분 자료는 전송처리
+            else if (c->send_mode == 2) // 30분 전송모드에 5분 자료는 전송처리
                 send = 1;
             else
                 send = 0;
