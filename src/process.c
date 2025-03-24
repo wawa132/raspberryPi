@@ -706,7 +706,7 @@ void process_30min(time_t *datetime, int power_off)
                     f->HAF.value = total_value;
                 }
 
-                if (nrm > (HAFNUM / 2)) // 정상
+                if (nrm >= (HAFNUM / 2)) // 정상
                     f->HAF.stat = 0;
                 else
                 {
