@@ -1,7 +1,7 @@
-CMakeFiles/gateway.dir/src/main.c.o: /home/pi/gateway/src/main.c \
- /usr/include/stdc-predef.h /home/pi/gateway/include/main.h \
- /home/pi/gateway/include/var.h /usr/include/signal.h \
- /usr/include/features.h /usr/include/features-time64.h \
+CMakeFiles/gateway.dir/src/var.c.o: /home/pi/gateway/src/var.c \
+ /usr/include/stdc-predef.h /home/pi/gateway/include/var.h \
+ /usr/include/signal.h /usr/include/features.h \
+ /usr/include/features-time64.h \
  /usr/include/aarch64-linux-gnu/bits/wordsize.h \
  /usr/include/aarch64-linux-gnu/bits/timesize.h \
  /usr/include/aarch64-linux-gnu/sys/cdefs.h \
@@ -158,8 +158,4 @@ CMakeFiles/gateway.dir/src/main.c.o: /home/pi/gateway/src/main.c \
  /usr/include/mariadb/mariadb_com.h \
  /usr/include/mariadb/mariadb_version.h /usr/include/mariadb/ma_list.h \
  /usr/include/mariadb/mariadb_ctype.h /usr/include/ctype.h \
- /usr/include/mariadb/mariadb_stmt.h /home/pi/gateway/include/hash.h \
- /home/pi/gateway/include/database.h /home/pi/gateway/include/process.h \
- /home/pi/gateway/include/crc16.h /home/pi/gateway/include/queue.h \
- /home/pi/gateway/include/rawdata.h /home/pi/gateway/include/server.h \
- /home/pi/gateway/include/seed.h /home/pi/gateway/include/client.h
+ /usr/include/mariadb/mariadb_stmt.h

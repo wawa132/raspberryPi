@@ -321,6 +321,30 @@ src/rawdata.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/rawdata.c.s
 .PHONY : src/rawdata.c.s
 
+src/seed.o: src/seed.c.o
+.PHONY : src/seed.o
+
+# target to build an object file
+src/seed.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/seed.c.o
+.PHONY : src/seed.c.o
+
+src/seed.i: src/seed.c.i
+.PHONY : src/seed.i
+
+# target to preprocess a source file
+src/seed.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/seed.c.i
+.PHONY : src/seed.c.i
+
+src/seed.s: src/seed.c.s
+.PHONY : src/seed.s
+
+# target to generate assembly for a file
+src/seed.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/seed.c.s
+.PHONY : src/seed.c.s
+
 src/server.o: src/server.c.o
 .PHONY : src/server.o
 
@@ -344,6 +368,30 @@ src/server.s: src/server.c.s
 src/server.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/server.c.s
 .PHONY : src/server.c.s
+
+src/var.o: src/var.c.o
+.PHONY : src/var.o
+
+# target to build an object file
+src/var.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/var.c.o
+.PHONY : src/var.c.o
+
+src/var.i: src/var.c.i
+.PHONY : src/var.i
+
+# target to preprocess a source file
+src/var.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/var.c.i
+.PHONY : src/var.c.i
+
+src/var.s: src/var.c.s
+.PHONY : src/var.s
+
+# target to generate assembly for a file
+src/var.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/var.c.s
+.PHONY : src/var.c.s
 
 # Help Target
 help:
@@ -378,9 +426,15 @@ help:
 	@echo "... src/rawdata.o"
 	@echo "... src/rawdata.i"
 	@echo "... src/rawdata.s"
+	@echo "... src/seed.o"
+	@echo "... src/seed.i"
+	@echo "... src/seed.s"
 	@echo "... src/server.o"
 	@echo "... src/server.i"
 	@echo "... src/server.s"
+	@echo "... src/var.o"
+	@echo "... src/var.i"
+	@echo "... src/var.s"
 .PHONY : help
 
 

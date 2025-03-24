@@ -181,10 +181,24 @@ CMakeFiles/gateway.dir/src/rawdata.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/gateway.dir/src/rawdata.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/gateway/src/rawdata.c -o CMakeFiles/gateway.dir/src/rawdata.c.s
 
+CMakeFiles/gateway.dir/src/seed.c.o: CMakeFiles/gateway.dir/flags.make
+CMakeFiles/gateway.dir/src/seed.c.o: /home/pi/gateway/src/seed.c
+CMakeFiles/gateway.dir/src/seed.c.o: CMakeFiles/gateway.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building C object CMakeFiles/gateway.dir/src/seed.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/gateway.dir/src/seed.c.o -MF CMakeFiles/gateway.dir/src/seed.c.o.d -o CMakeFiles/gateway.dir/src/seed.c.o -c /home/pi/gateway/src/seed.c
+
+CMakeFiles/gateway.dir/src/seed.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/gateway.dir/src/seed.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/pi/gateway/src/seed.c > CMakeFiles/gateway.dir/src/seed.c.i
+
+CMakeFiles/gateway.dir/src/seed.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/gateway.dir/src/seed.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/gateway/src/seed.c -o CMakeFiles/gateway.dir/src/seed.c.s
+
 CMakeFiles/gateway.dir/src/server.c.o: CMakeFiles/gateway.dir/flags.make
 CMakeFiles/gateway.dir/src/server.c.o: /home/pi/gateway/src/server.c
 CMakeFiles/gateway.dir/src/server.c.o: CMakeFiles/gateway.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building C object CMakeFiles/gateway.dir/src/server.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Building C object CMakeFiles/gateway.dir/src/server.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/gateway.dir/src/server.c.o -MF CMakeFiles/gateway.dir/src/server.c.o.d -o CMakeFiles/gateway.dir/src/server.c.o -c /home/pi/gateway/src/server.c
 
 CMakeFiles/gateway.dir/src/server.c.i: cmake_force
@@ -194,6 +208,20 @@ CMakeFiles/gateway.dir/src/server.c.i: cmake_force
 CMakeFiles/gateway.dir/src/server.c.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/gateway.dir/src/server.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/gateway/src/server.c -o CMakeFiles/gateway.dir/src/server.c.s
+
+CMakeFiles/gateway.dir/src/var.c.o: CMakeFiles/gateway.dir/flags.make
+CMakeFiles/gateway.dir/src/var.c.o: /home/pi/gateway/src/var.c
+CMakeFiles/gateway.dir/src/var.c.o: CMakeFiles/gateway.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_11) "Building C object CMakeFiles/gateway.dir/src/var.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/gateway.dir/src/var.c.o -MF CMakeFiles/gateway.dir/src/var.c.o.d -o CMakeFiles/gateway.dir/src/var.c.o -c /home/pi/gateway/src/var.c
+
+CMakeFiles/gateway.dir/src/var.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/gateway.dir/src/var.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/pi/gateway/src/var.c > CMakeFiles/gateway.dir/src/var.c.i
+
+CMakeFiles/gateway.dir/src/var.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/gateway.dir/src/var.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/pi/gateway/src/var.c -o CMakeFiles/gateway.dir/src/var.c.s
 
 # Object files for target gateway
 gateway_OBJECTS = \
@@ -205,7 +233,9 @@ gateway_OBJECTS = \
 "CMakeFiles/gateway.dir/src/process.c.o" \
 "CMakeFiles/gateway.dir/src/queue.c.o" \
 "CMakeFiles/gateway.dir/src/rawdata.c.o" \
-"CMakeFiles/gateway.dir/src/server.c.o"
+"CMakeFiles/gateway.dir/src/seed.c.o" \
+"CMakeFiles/gateway.dir/src/server.c.o" \
+"CMakeFiles/gateway.dir/src/var.c.o"
 
 # External object files for target gateway
 gateway_EXTERNAL_OBJECTS =
@@ -218,11 +248,13 @@ gateway: CMakeFiles/gateway.dir/src/main.c.o
 gateway: CMakeFiles/gateway.dir/src/process.c.o
 gateway: CMakeFiles/gateway.dir/src/queue.c.o
 gateway: CMakeFiles/gateway.dir/src/rawdata.c.o
+gateway: CMakeFiles/gateway.dir/src/seed.c.o
 gateway: CMakeFiles/gateway.dir/src/server.c.o
+gateway: CMakeFiles/gateway.dir/src/var.c.o
 gateway: CMakeFiles/gateway.dir/build.make
 gateway: /usr/lib/aarch64-linux-gnu/libcrypto.so
 gateway: CMakeFiles/gateway.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking C executable gateway"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/gateway/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_12) "Linking C executable gateway"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/gateway.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

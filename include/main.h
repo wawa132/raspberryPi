@@ -14,6 +14,4 @@ void time_process();
 void thread_create();
 void thread_join();
 
-int check_off(TOFH_TIME *t);
-
 #endif

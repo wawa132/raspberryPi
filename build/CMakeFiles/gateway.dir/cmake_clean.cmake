@@ -15,8 +15,12 @@ file(REMOVE_RECURSE
   "CMakeFiles/gateway.dir/src/queue.c.o.d"
   "CMakeFiles/gateway.dir/src/rawdata.c.o"
   "CMakeFiles/gateway.dir/src/rawdata.c.o.d"
+  "CMakeFiles/gateway.dir/src/seed.c.o"
+  "CMakeFiles/gateway.dir/src/seed.c.o.d"
   "CMakeFiles/gateway.dir/src/server.c.o"
   "CMakeFiles/gateway.dir/src/server.c.o.d"
+  "CMakeFiles/gateway.dir/src/var.c.o"
+  "CMakeFiles/gateway.dir/src/var.c.o.d"
   "gateway"
   "gateway.pdb"
 )

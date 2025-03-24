@@ -45,6 +45,8 @@
 #define FIVTDDH 288
 #define HAFTDDH 48
 
+#define TIMEOUT 30
+
 typedef struct
 {
     int32_t min, max, std;
@@ -116,15 +118,18 @@ typedef struct
 
 extern CHIMNEY chimney[CHIMNEY_NUM];
 extern INFORM info[CHIMNEY_NUM];
+extern TOFH_TIME off_time[2]; // [0] 부팅 후 전원단절 구간, [1] 서버 시간 동기화 오차로 인한 전원단절 구간
 
 extern bool RUNNING;
 extern uint8_t NUM_CHIMNEY;
+extern uint8_t request_data;
 extern uint16_t SYNC_TIME;
 extern int32_t sensor_data[MAX_NUM];
 extern pthread_t thread[MAX_THREAD];
 
-extern TOFH_TIME off_time[2]; // [0] 부팅 후 전원단절 구간, [1] 서버 시간 동기화 오차로 인한 전원단절 구간
-
 extern time_t now, before_now, produce_time;
+
+void convert_ascii_to_hex(const char *src, uint8_t *dst, size_t start, size_t length);
+void check_sent_data(const uint8_t *data, size_t data_len);
 
 #endif

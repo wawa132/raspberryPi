@@ -16,7 +16,9 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/pi/gateway/src/process.c" "CMakeFiles/gateway.dir/src/process.c.o" "gcc" "CMakeFiles/gateway.dir/src/process.c.o.d"
   "/home/pi/gateway/src/queue.c" "CMakeFiles/gateway.dir/src/queue.c.o" "gcc" "CMakeFiles/gateway.dir/src/queue.c.o.d"
   "/home/pi/gateway/src/rawdata.c" "CMakeFiles/gateway.dir/src/rawdata.c.o" "gcc" "CMakeFiles/gateway.dir/src/rawdata.c.o.d"
+  "/home/pi/gateway/src/seed.c" "CMakeFiles/gateway.dir/src/seed.c.o" "gcc" "CMakeFiles/gateway.dir/src/seed.c.o.d"
   "/home/pi/gateway/src/server.c" "CMakeFiles/gateway.dir/src/server.c.o" "gcc" "CMakeFiles/gateway.dir/src/server.c.o.d"
+  "/home/pi/gateway/src/var.c" "CMakeFiles/gateway.dir/src/var.c.o" "gcc" "CMakeFiles/gateway.dir/src/var.c.o.d"
   )
 
 # Targets to which this target links.

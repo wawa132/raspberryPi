@@ -29,6 +29,7 @@ void enqueue_tdah_to_transmit(time_t *datetime);
 void enqueue_tddh_to_transmit(time_t *datetime);
 void enqueue_tofh_to_transmit(time_t *datetime);
 void enqueue_miss_to_transmit(time_t *datetime);
+void enqueue_load_to_transmit(time_t begin_t, time_t end_t, int no_chimney, int seg);
 
 int enqueue_transmit_data(DATA_Q *q, const char *query_str, const char *update_str);
 int convert_hex(const char *asc, uint8_t *hex);
