@@ -1077,22 +1077,25 @@ void update_tnoh(time_t *datetime)
 void process_day(time_t *datetime)
 {
     // 일일 데이터 생성
-    char query_str[BUFFER_SIZE], endTime_str[300], beginTime_str[300], deleteTime_str[300];
+    char query_str[BUFFER_SIZE], insertTime_str[50], endTime_str[50], beginTime_str[50], endHafTime_str[50], beginHafTime_str[50], deleteTime_str[50];
 
     struct tm *insert_time = localtime(datetime); // 현재 시간(아마도 다음날 0시 0분 0초)
-    snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d %02d:%02d:%02d", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday, insert_time->tm_hour, insert_time->tm_min, insert_time->tm_sec);
+    snprintf(insertTime_str, sizeof(insertTime_str), "%4d-%02d-%02d %02d:%02d:%02d", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday, insert_time->tm_hour, insert_time->tm_min, insert_time->tm_sec);
 
     time_t begin_t = *datetime;
     begin_t -= DAYSEC; // 하루전 시간
     struct tm begin_time = *localtime(&begin_t);
-    snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
+    snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d 00:05:00", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
+    snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
+    snprintf(beginHafTime_str, sizeof(beginHafTime_str), "%4d-%02d-%02d 00:30:00", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
+    snprintf(endHafTime_str, sizeof(endHafTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
 
     time_t delete_t = *datetime;
-    delete_t -= (DAYSEC * 3); // 하루전 시간
+    delete_t -= (DAYSEC * 3); // 3일 전 시간
     struct tm delete_time = *localtime(&delete_t);
     snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d", delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday);
 
-    printf("%s 일일마감(5분) 생성 시점: %s\n", endTime_str, beginTime_str);
+    printf("%s 일일마감(5분) 생성 시점: %s\n", insertTime_str, beginTime_str);
 
     MYSQL *conn = get_conn(); // 데이터베이스 연결 획득
 
@@ -1103,7 +1106,7 @@ void process_day(time_t *datetime)
         for (int j = 0; j < c->num_facility; j++)
         {
             // 전일 5분 데이터 데이터베이스에서 읽어오기
-            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_05stat WHERE tim_date LIKE \'%s%%\' AND fac_id = %d AND chim_id = %d;", beginTime_str, j, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_05stat WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginTime_str, endTime_str, j, i + 1);
 
             execute_query(conn, query_str);
             MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
@@ -1147,11 +1150,11 @@ void process_day(time_t *datetime)
         {
             FACILITY *f = &(c->facility[j]);
             printf("%s (일일 5분) %s(%1s) | 정상 %3d | 비정상 %3d | 통신불량 %3d | 전원단절 %3d | 점검중 %3d\n",
-                   endTime_str, f->name, f->item, f->SFIV.nrm, f->SFIV.low, f->SFIV.com, f->SFIV.off, f->SFIV.chk);
+                   insertTime_str, f->name, f->item, f->SFIV.nrm, f->SFIV.low, f->SFIV.com, f->SFIV.off, f->SFIV.chk);
         }
     }
 
-    printf("%s 일일마감(30분) 생성 시점: %s\n", endTime_str, beginTime_str);
+    printf("%s 일일마감(30분) 생성 시점: %s\n", insertTime_str, beginTime_str);
 
     for (int i = 0; i < NUM_CHIMNEY; i++)
     {
@@ -1160,7 +1163,7 @@ void process_day(time_t *datetime)
         for (int j = 0; j < c->num_facility; j++)
         {
             // 전일 30분 데이터 데이터베이스에서 읽어오기
-            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_30stat WHERE tim_date LIKE \'%s%%\' AND fac_id = %d AND chim_id = %d;", beginTime_str, j, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_30stat WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginHafTime_str, endHafTime_str, j, i + 1);
 
             execute_query(conn, query_str);
             MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
@@ -1205,14 +1208,14 @@ void process_day(time_t *datetime)
         {
             FACILITY *f = &(c->facility[j]);
             printf("%s (일일 30분) %s(%1s) 정상 %3d | 비정상 %3d | 통신불량 %3d | 전원단절 %3d | 점검중 %3d\n",
-                   endTime_str, f->name, f->item, f->SHAF.nrm, f->SHAF.low, f->SHAF.com, f->SHAF.off, f->SHAF.chk);
+                   insertTime_str, f->name, f->item, f->SHAF.nrm, f->SHAF.low, f->SHAF.com, f->SHAF.off, f->SHAF.chk);
         }
     }
 }
 
 void update_tddh(time_t *datetime, int seg)
 {
-    char dataTime_str[100], insertTime_str[100], tofhTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE];
+    char dataTime_str[100], insertTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE], endTime_str[50], beginTime_str[50], endHafTime_str[50], beginHafTime_str[50];
 
     time_t data_t = *datetime;
     data_t -= DAYSEC;
@@ -1222,7 +1225,11 @@ void update_tddh(time_t *datetime, int seg)
     snprintf(insertTime_str, sizeof(insertTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
              insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday, insert_time->tm_hour, insert_time->tm_min, insert_time->tm_sec);
     snprintf(dataTime_str, sizeof(dataTime_str), "%4d%02d%02d", data_time.tm_year + 1900, data_time.tm_mon + 1, data_time.tm_mday);
-    snprintf(tofhTime_str, sizeof(tofhTime_str), "%4d-%02d-%02d", data_time.tm_year + 1900, data_time.tm_mon + 1, data_time.tm_mday); // 전원단절 일일마감
+
+    snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d 00:05:00", data_time.tm_year + 1900, data_time.tm_mon + 1, data_time.tm_mday);
+    snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
+    snprintf(beginHafTime_str, sizeof(beginHafTime_str), "%4d-%02d-%02d 00:30:00", data_time.tm_year + 1900, data_time.tm_mon + 1, data_time.tm_mday);
+    snprintf(endHafTime_str, sizeof(endHafTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
 
     MYSQL *conn = get_conn(); // 데이터베이스 연결 획득
 
@@ -1279,9 +1286,9 @@ void update_tddh(time_t *datetime, int seg)
 
         /*일일마감 전원단절 데이터 생성*/
         if (seg == 1)
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE tim_date LIKE \'%s%%\' AND off = 1 AND chim_id = %d", tofhTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
         else
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE tim_date LIKE \'%s%%\' AND off = 1 AND chim_id = %d", tofhTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND off = 1 AND chim_id = %d;", beginHafTime_str, endHafTime_str, i + 1);
 
         execute_query(conn, query_str);
         MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
