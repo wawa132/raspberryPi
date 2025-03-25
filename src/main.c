@@ -12,7 +12,7 @@ int main()
     // 강제종료 시그널 처리 함수 등록
     signal(SIGINT, exit_handler);
 
-    printf("gateway start... v3.55\n");
+    printf("=== gateway start... v3.55 ===\n");
 
     // 데이터베이스 초기화, 해시 생성
     init_db();
@@ -42,6 +42,9 @@ int main()
     // 스레드 종료 대기 및 데이터베이스 해제
     thread_join();
     destroy_db();
+
+    // EXIT
+    printf("=== gateway exit... ===\n");
 
     return 0;
 }

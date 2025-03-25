@@ -3,8 +3,8 @@
 #define PORT 9090
 #define SA struct sockaddr
 
-int servfd, connfd;
-uint8_t request_data, ftp_chimney, upgrade_flag, reboot_flag;
+int servfd = -1, connfd;
+uint8_t request_data, ftp_chimney, upgrade, reboot_flag;
 static uint8_t EOT = 0x04, ACK = 0x06, NAK = 0x15;
 char ftp_type[2], ftp_ipDomain[41], ftp_port[6], ftp_path[51], ftp_id[11], ftp_passwd[11], ftp_servIP[16];
 
@@ -42,8 +42,7 @@ void *tcp_server()
         if (bind(servfd, (SA *)&servaddr, sizeof(servaddr)) != 0)
         {
             printf("server-socket bind failed...\n");
-            close(servfd);
-            sleep(1);
+            exit_server_socket();
 
             if (RUNNING)
                 continue;
@@ -59,8 +58,7 @@ void *tcp_server()
         if ((listen(servfd, 5)) != 0)
         {
             printf("server-socket listen failed...\n");
-            close(servfd);
-            sleep(1);
+            exit_server_socket();
 
             if (RUNNING)
                 continue;
@@ -78,7 +76,7 @@ void *tcp_server()
         if (connfd < 0)
         {
             printf("server accept failed...\n");
-            close(servfd);
+            exit_server_socket();
 
             if (RUNNING)
                 continue;
@@ -98,8 +96,7 @@ void *tcp_server()
         if (setsockopt(connfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
         {
             printf("connected socket send timeout setup failed\n");
-            close(servfd);
-
+            exit_server_socket();
             if (RUNNING)
                 continue;
             else
@@ -113,7 +110,7 @@ void *tcp_server()
         if (setsockopt(connfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
         {
             printf("connected socket recv timeout setup failed\n");
-            close(servfd);
+            exit_server_socket();
 
             if (RUNNING)
                 continue;
@@ -135,6 +132,14 @@ void *tcp_server()
     }
 
     return NULL;
+}
+
+void exit_server_socket()
+{
+    close(servfd);
+    servfd = -1;
+
+    printf("server-socket closed...\n");
 }
 
 void process_client_message(int connfd)
@@ -166,9 +171,6 @@ void process_client_message(int connfd)
                 printf("server-socket recv not enough bytes\n");
                 break;
             }
-
-            // check recv data
-            check_recv_data(buff, (size_t)byte_num);
 
             int result = recv_handle_data(buff, byte_num);
             if (result > 0)
@@ -204,6 +206,9 @@ void process_client_message(int connfd)
 int recv_handle_data(const unsigned char *recvData, ssize_t byte_num)
 {
 
+    // check recv data
+    check_recv_data(recvData, (size_t)byte_num);
+
     // CRC check
     uint16_t rcvCrc = recvData[byte_num - 2] << 8 | recvData[byte_num - 1];
     uint16_t chkCRC = crc16_ccitt_false(recvData, (size_t)(byte_num - 2));
@@ -212,15 +217,11 @@ int recv_handle_data(const unsigned char *recvData, ssize_t byte_num)
         printf("server-socket crc mismatch: received(%d), calculated(%d)\n", rcvCrc, chkCRC);
         return -1;
     }
-    else
-    {
-        printf("server-socket crc matched: received(%d), calculated(%d)\n", rcvCrc, chkCRC);
-    }
 
     // 명령어, 사업장코드, 굴뚝코드, 전체길이 추출
-    char cmd[5], business_code[8], chimney_code[4], len[5];
-    memcpy(cmd, recvData, 4);
-    cmd[4] = '\0';
+    char command[5], business_code[8], chimney_code[4], len[5];
+    memcpy(command, recvData, 4);
+    command[4] = '\0';
     memcpy(business_code, recvData + 4, 7);
     business_code[7] = '\0';
     memcpy(chimney_code, recvData + 11, 3);
@@ -256,114 +257,133 @@ int recv_handle_data(const unsigned char *recvData, ssize_t byte_num)
     }
 
     // 명령어 확인
-    if (strncmp(cmd, "PDUH", 4) == 0 && total_len == 43)
+    if (strncmp(command, "PDUH", 4) == 0 && total_len == 43)
     {
         return pduh_process(recvData, check);
     }
-    else if (strncmp(cmd, "PFST", 4) == 0 && total_len == 24)
+    else if (strncmp(command, "PFST", 4) == 0 && total_len == 24)
     {
         return pfst_process(recvData, check);
     }
-    else if (strncmp(cmd, "PSEP", 4) == 0 && total_len == 36)
+    else if (strncmp(command, "PSEP", 4) == 0 && total_len == 36)
     {
         return psep_process(recvData, check);
     }
-    else if (strncmp(cmd, "PUPG", 4) == 0 && total_len >= 164)
+    else if (strncmp(command, "PUPG", 4) == 0 && total_len >= 164)
     {
         printf("recv number of byte for upgrade request: %ld\n", byte_num);
         return pupg_process(recvData, check);
     }
-    else if (strncmp(cmd, "PVER", 4) == 0 && total_len == 20)
+    else if (strncmp(command, "PVER", 4) == 0 && total_len == 20)
     {
         return pver_process(recvData, check);
     }
-    else if (strncmp(cmd, "PSET", 4) == 0 && total_len == 32)
+    else if (strncmp(command, "PSET", 4) == 0 && total_len == 32)
     {
         return pset_process(recvData, check);
     }
-    else if (strncmp(cmd, "PFCC", 4) == 0 && total_len == 30)
+    else if (strncmp(command, "PFCC", 4) == 0 && total_len == 30)
     {
         return pfcc_process(recvData, check);
     }
-    else if (strncmp(cmd, "PAST", 4) == 0 && total_len >= 46)
+    else if (strncmp(command, "PAST", 4) == 0 && total_len >= 46)
     {
         return past_process(recvData, check);
     }
-    else if (strncmp(cmd, "PFCR", 4) == 0 && total_len == 20)
+    else if (strncmp(command, "PFCR", 4) == 0 && total_len == 20)
     {
         return pfcr_process(recvData, check);
     }
-    else if (strncmp(cmd, "PFRS", 4) == 0 && total_len >= 32)
+    else if (strncmp(command, "PFRS", 4) == 0 && total_len >= 32)
     {
         return pfrs_process(recvData, check);
     }
-    else if (strncmp(cmd, "PRSI", 4) == 0 && total_len == 36)
+    else if (strncmp(command, "PRSI", 4) == 0 && total_len == 36)
     {
         return prsi_process(recvData, check);
     }
-    else if (strncmp(cmd, "PDAT", 4) == 0 && total_len == 21)
+    else if (strncmp(command, "PDAT", 4) == 0 && total_len == 21)
     {
         return pdat_process(recvData, check);
     }
-    else if (strncmp(cmd, "PODT", 4) == 0 && total_len == 26)
+    else if (strncmp(command, "PODT", 4) == 0 && total_len == 26)
     {
         return podt_process(recvData, check);
     }
-    else if (strncmp(cmd, "PCN2", 4) == 0 && total_len == 20)
+    else if (strncmp(command, "PCN2", 4) == 0 && total_len == 20)
     {
         return send_tcn2(check, 1);
     }
-    else if (strncmp(cmd, "PRBT", 4) == 0 && total_len == 20)
+    else if (strncmp(command, "PRBT", 4) == 0 && total_len == 20)
     {
         return prbt_process(recvData, check);
     }
 
-    printf("server-socket doesn't match command(%s) or total length(%d)\n", cmd, total_len);
+    printf("server-socket doesn't match command(%s) or total length(%d)\n", command, total_len);
     return -1;
 }
 
 int pduh_process(const uint8_t *recvData, int no_chimney) // n+1은 굴뚝번호
 {
-    char beginTime_str[11], endTime_str[11], seg_str[4];
+    char beginTime_str[11], endTime_str[11], dataType_str[4];
 
-    memcpy(seg_str, recvData + 18, 3);
-    seg_str[3] = '\0';
+    memcpy(dataType_str, recvData + 18, 3);
+    dataType_str[3] = '\0';
     memcpy(beginTime_str, recvData + 21, 10);
     beginTime_str[10] = '\0';
     memcpy(endTime_str, recvData + 31, 10);
     endTime_str[10] = '\0';
 
     // 자료 구분
-    int seg;
-    if (strncmp(seg_str, "HAF", 3) == 0)
-        seg = 0;
-    else if (strncmp(seg_str, "ALL", 3) == 0)
-        seg = 1;
-    else if (strncmp(seg_str, "FIV", 3) == 0)
-        seg = 2;
+    int data_type;
+    if (strncmp(dataType_str, "HAF", 3) == 0)
+        data_type = 0;
+    else if (strncmp(dataType_str, "ALL", 3) == 0)
+        data_type = 1;
+    else if (strncmp(dataType_str, "FIV", 3) == 0)
+        data_type = 2;
 
     // 시작- 종료 일시 설정
     struct tm begin_time, end_time;
-    if (parse_datetime(beginTime_str, &begin_time) < 0)
+    int year, mon, day, hour, min;
+    if (sscanf(beginTime_str, "%02d%02d%02d%02d%02d",
+               &year, &mon, &day, &hour, &min) == 5)
+    {
+        begin_time.tm_year = year + 100;
+        begin_time.tm_mon = mon - 1;
+        begin_time.tm_mday = day;
+        begin_time.tm_hour = hour;
+        begin_time.tm_min = min;
+        begin_time.tm_sec = 0;
+    }
+    else
         return -1;
 
-    struct tm *t = &begin_time;
     printf("PDUH begin time: %4d-%02d-%02d %02d:%02d\n",
-           t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min);
+           begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday, begin_time.tm_hour, begin_time.tm_min);
 
-    if (parse_datetime(endTime_str, &end_time) < 0)
+    if (sscanf(endTime_str, "%02d%02d%02d%02d%02d",
+               &year, &mon, &day, &hour, &min) == 5)
+    {
+        end_time.tm_year = year + 100;
+        end_time.tm_mon = mon - 1;
+        end_time.tm_mday = day;
+        end_time.tm_hour = hour;
+        end_time.tm_min = min;
+        end_time.tm_sec = 0;
+    }
+    else
         return -1;
 
-    t = &end_time;
     printf("PDUH end time: %4d-%02d-%02d %02d:%02d\n",
-           t->tm_year + 1900, t->tm_mon + 1, t->tm_mday, t->tm_hour, t->tm_min);
+           end_time.tm_year + 1900, end_time.tm_mon + 1, end_time.tm_mday, end_time.tm_hour, end_time.tm_min);
 
     time_t startTime, endTime;
     startTime = mktime(&begin_time);
     endTime = mktime(&end_time);
 
     // 요청 기간 저장 데이터 큐에 담기
-    enqueue_load_to_transmit(startTime, endTime, no_chimney, seg);
+    enqueue_load_to_transmit(startTime, endTime, no_chimney, data_type);
 
     DATA_Q *q = &(remote_q[no_chimney][0]);
     while (!isEmpty(q))
@@ -555,7 +575,7 @@ int pupg_process(const uint8_t *recvData, int no_chimney)
         if (host_info == NULL)
         {
             fprintf(stderr, "failed to extract ip address from domain: %s\n", ftpIP);
-            upgrade_flag = false;
+            upgrade = false;
 
             free(ftpIP);
             return -1;
@@ -567,7 +587,7 @@ int pupg_process(const uint8_t *recvData, int no_chimney)
         }
     }
 
-    upgrade_flag = true;
+    upgrade = true;
 
     free(ftpIP);
     return 1;
@@ -614,7 +634,7 @@ int pset_process(const uint8_t *recvData, int no_chimney)
             if (check_off(off_time + 1))
             {
                 if (pthread_create(&thread[6], NULL, tofh_thread, (TOFH_TIME *)off_time + 1) < 0)
-                    printf("Failed to create tofh thread: %d 굴뚝\n", no_chimney + 1);
+                    printf("Failed to create tofh thread: %d chimney\n", no_chimney + 1);
             }
         }
 
@@ -622,6 +642,7 @@ int pset_process(const uint8_t *recvData, int no_chimney)
     }
     else
     {
+        printf("PSET received time string failed to parsing time-date\n");
         return -1;
     }
 }
@@ -1437,28 +1458,6 @@ int send_response(const uint8_t *data, int data_len)
     }
 
     return 0;
-}
-
-int parse_datetime(const char *timeStr, struct tm *t)
-{
-    int year, mon, day, hour, min;
-    if (sscanf(timeStr, "%02d%02d%02d%02d%02d",
-               &year, &mon, &day, &hour, &min) == 5)
-    {
-        t->tm_year = year + 100;
-        t->tm_mon = mon - 1;
-        t->tm_mday = day;
-        t->tm_hour = hour;
-        t->tm_min = min;
-        t->tm_sec = 0;
-
-        return 0;
-    }
-    else
-    {
-        printf("failed to parse time data\n");
-        return -1;
-    }
 }
 
 void trim_space(char *buffer)

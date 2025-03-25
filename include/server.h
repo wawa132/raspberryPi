@@ -13,6 +13,7 @@ extern int servfd;
 void *tcp_server();
 void process_client_message(int connfd);
 int recv_handle_data(const unsigned char *recvData, ssize_t byte_num);
+void exit_server_socket();
 
 int pduh_process(const uint8_t *recvData, int no_chimney);
 int pfst_process(const uint8_t *recvData, int no_chimney);
@@ -33,7 +34,6 @@ int send_tcn2(int no_chimney, int type);
 int send_tver(const uint8_t *recvData, int no_chimney);
 
 int send_response(const uint8_t *data, int data_len);
-int parse_datetime(const char *timeStr, struct tm *t);
 void trim_space(char *buffer);
 int Is_IpAddress(const char *address);
 void check_recv_data(const uint8_t *data, size_t data_len);

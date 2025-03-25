@@ -33,7 +33,7 @@ void *make_data()
                 {
                     process_30min(&produce_time, 0); // 30분 데이터 생성
                     update_tdah(&produce_time, 0, 0);
-                    update_tnoh(&produce_time);
+                    update_tnoh(&produce_time, 0);
                 }
 
                 enqueue_tdah_to_transmit(&produce_time);
@@ -52,7 +52,7 @@ void *make_data()
             }
 
             // 시간 동기화 확인
-            if (day_time.tm_hour == SYNC_TIME)
+            if (day_time.tm_hour == SYNC_TIME && day_time.tm_min == 0 && day_time.tm_sec == 0)
             {
                 char buffer[300];
                 uint8_t sendBuffer[300];
@@ -211,7 +211,7 @@ void update_5sec_relation(time_t *datetime)
                     f->SEC.rel = 8;
             }
 
-            snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05sec (tim_date, fac_id, fac, _data, stat, run, rel, chim_id) VALUES(\'%s\', %d, \'%s\', %d, %d, %d, %d, %d);",
+            snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05sec (insert_time, fac_id, fac, _data, stat, run, rel, chim_id) VALUES(\'%s\', %d, \'%s\', %d, %d, %d, %d, %d);",
                      insertTime_str, j, f->name, f->SEC.value, f->SEC.stat, f->SEC.run, f->SEC.rel, i + 1);
             execute_query(conn, query_str);
 
@@ -292,7 +292,7 @@ void update_5min_state(time_t *datetime, int power_off)
                      "COUNT(CASE WHEN rel = 9 THEN 1 END), COUNT(CASE WHEN rel = 8 THEN 1 END), "
                      "COUNT(CASE WHEN rel = 0 THEN 1 END), COUNT(CASE WHEN rel = 1 THEN 1 END), "
                      "COUNT(CASE WHEN rel = 3 THEN 1 END) "
-                     "FROM t_05sec WHERE tim_date > \'%s\' AND tim_date <= \'%s\' "
+                     "FROM t_05sec WHERE insert_time > \'%s\' AND insert_time <= \'%s\' "
                      "AND fac_id = %d AND chim_id = %d FOR UPDATE;",
                      beginTime_str, endTime_str, j, i + 1);
 
@@ -546,13 +546,13 @@ void update_5min_relation(time_t *datetime, int power_off)
                        insertTime_str, f->name, f->item, f->FIV.rel);
 
             // 5분 상태 정보 데이터 베이스 저장
-            snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05stat (tim_date, fac_id, fac, _data, stat, run, rel, chim_id) VALUES (\"%s\", %d, \"%s\", %d, %d, %d, %d, %d);",
+            snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05stat (insert_time, fac_id, fac, _data, stat, run, rel, chim_id) VALUES (\"%s\", %d, \"%s\", %d, %d, %d, %d, %d);",
                      insertTime_str, j, f->name, f->FIV.value, f->FIV.stat, f->FIV.run, f->FIV.rel, i + 1);
             execute_query(conn, query_str);
         }
         printf("\n");
 
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05sec WHERE tim_date <= \'%s\' and chim_id = %d;", deleteTime_str, i + 1);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05sec WHERE insert_time <= \'%s\' and chim_id = %d;", deleteTime_str, i + 1);
         execute_query(conn, query_str);
     }
 
@@ -624,7 +624,7 @@ void process_30min(time_t *datetime, int power_off)
                      "COUNT(CASE WHEN rel = 9 THEN 1 END), COUNT(CASE WHEN rel = 8 THEN 1 END), "
                      "COUNT(CASE WHEN rel = 0 THEN 1 END), COUNT(CASE WHEN rel = 1 THEN 1 END), "
                      "COUNT(CASE WHEN rel = 3 THEN 1 END), SUM(_data) "
-                     "FROM t_05stat WHERE tim_date > \'%s\' AND tim_date <= \'%s\' "
+                     "FROM t_05stat WHERE insert_time > \'%s\' AND insert_time <= \'%s\' "
                      "AND fac_id = %d AND chim_id = %d;",
                      beginTime_str, endTime_str, j, i + 1);
 
@@ -743,7 +743,7 @@ void process_30min(time_t *datetime, int power_off)
                     printf("[%s](30분) %s(%s) (상태정보)정상 %2d | 비정상 %2d | 통신불량 %2d | 전원단절 %2d | 점검중 %2d\n (방지정상)가동유예 %2d | 중지유예 %2d | 비정상 %2d | 정상 %2d | 해당없음 %2d\n", insertTime_str, f->name, f->item, nrm, low, com, off, chk, ond, ofd, err, okk, naa);
 
                 // 30분 상태 정보 데이터 베이스 저장
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30stat (tim_date, fac_id, fac, _data, stat, run, rel, chim_id) VALUES (\"%s\", %d, \"%s\", %d, %d, %d, %d, %d);", insertTime_str, j, f->name, f->HAF.value, f->HAF.stat, f->HAF.run, f->HAF.rel, i + 1);
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30stat (insert_time, fac_id, fac, _data, stat, run, rel, chim_id) VALUES (\"%s\", %d, \"%s\", %d, %d, %d, %d, %d);", insertTime_str, j, f->name, f->HAF.value, f->HAF.stat, f->HAF.run, f->HAF.rel, i + 1);
                 execute_query(conn, query_str);
             }
 
@@ -789,7 +789,7 @@ void process_30min(time_t *datetime, int power_off)
 
 void update_tdah(time_t *datetime, int seg, int off)
 {
-    char data_segment[4], dateTime_str[100], insertTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE];
+    char data_segment[4], dateTime_str[100], dataTime_str[50], insertTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE];
     time_t data_t = *datetime;
 
     if (seg == 1) // 5min
@@ -811,6 +811,9 @@ void update_tdah(time_t *datetime, int seg, int off)
 
     snprintf(insertTime_str, sizeof(insertTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
              insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday, insert_time->tm_hour, insert_time->tm_min, insert_time->tm_sec);
+
+    snprintf(dataTime_str, sizeof(dataTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             data_time.tm_year + 1900, data_time.tm_mon + 1, data_time.tm_mday, data_time.tm_hour, data_time.tm_min, data_time.tm_sec);
 
     MYSQL *conn = get_conn(); // 데이터베이스 연결 획득
 
@@ -905,35 +908,30 @@ void update_tdah(time_t *datetime, int seg, int off)
             printf("%s(30분TDAH) %s%s\n", insertTime_str, buffer, crcBuffer);
 
         // TDAH 테이블에 저장
+        int send = 0;
         if (seg == 1)
         {
-            if (TOFH > 0 && off)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 1, \"%s\", \"%s\", \"%s\", %d, 1);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
-            else if (TOFH > 0 && !off)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 1, \"%s\", \"%s\", \"%s\", %d, 0);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
-            else if (c->send_mode == 0) // 30분 전송모드에 5분 자료는 전송처리
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 0, \"%s\", \"%s\", \"%s\", %d, 1);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
+            if (c->send_mode == 0 || (TOFH > 0 && off))
+                send = 1;
             else
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 0, \"%s\", \"%s\", \"%s\", %d, 0);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
+                send = 0;
+
+            if (TOFH > 0)
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tdah (insert_time, tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 1, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
+            else
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tdah (insert_time, tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 0, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
         }
         else
         {
-            if (TOFH > 0 && off)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 1, \"%s\", \"%s\", \"%s\", %d, 1);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
-            else if (TOFH > 0 && !off)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 1, \"%s\", \"%s\", \"%s\", %d, 0);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
-            else if (c->send_mode == 2) // 5분 전송 모드인 경우, 30분 자료 전송처리
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 0, \"%s\", \"%s\", \"%s\", %d, 1);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
+            if (c->send_mode == 2 || (TOFH > 0 && off))
+                send = 1;
             else
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", 0, \"%s\", \"%s\", \"%s\", %d, 0);",
-                         insertTime_str, "TDAH", buffer + 4, crcBuffer, i + 1);
+                send = 0;
+
+            if (TOFH > 0)
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (insert_time, insert_time, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 1, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
+            else
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (insert_time, insert_time, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 0, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
         }
 
         execute_query(conn, query_str);
@@ -952,7 +950,7 @@ void update_tdah(time_t *datetime, int seg, int off)
                 snprintf(newBuffer, sizeof(newBuffer), "%4dHAF%8s%3d", total_len, dateTime_str, 1);
             strcat(buffer, newBuffer);
 
-            snprintf(newBuffer, sizeof(newBuffer), "%02d%02d", insert_time->tm_hour, insert_time->tm_min);
+            snprintf(newBuffer, sizeof(newBuffer), "%02d%02d", data_time.tm_hour, data_time.tm_min);
             strcat(buffer, newBuffer);
 
             uint16_t crc = crc16_ccitt_false((uint8_t *)buffer, total_len - 2);
@@ -964,9 +962,9 @@ void update_tdah(time_t *datetime, int seg, int off)
                 printf("[%s](30분TOFH) %s%s\n", insertTime_str, buffer, crcBuffer);
 
             if (seg == 1)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
             else
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
 
             execute_query(conn, query_str);
         }
@@ -982,15 +980,15 @@ void update_tdah(time_t *datetime, int seg, int off)
              delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday, delete_time.tm_hour, delete_time.tm_min);
 
     if (seg == 1)
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tdah WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tdah WHERE insert_time <= \'%s\';", deleteTime_str);
     else
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tdah WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tdah WHERE insert_time <= \'%s\';", deleteTime_str);
 
     execute_query(conn, query_str);
     release_conn(conn);
 }
 
-void update_tnoh(time_t *datetime)
+void update_tnoh(time_t *datetime, int off)
 {
     char dataTime_str[100], insertTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE], tnohBuffer[BUFFER_SIZE];
 
@@ -1013,6 +1011,9 @@ void update_tnoh(time_t *datetime)
         // TNOH 시설 갯수 확인 25-02-25 수정코드
         uint8_t numTNOHfac = 0;
 
+        // 전원단절 데이터로 생성되면, TDAH를 전송하지 않기에 TNOH도 전송하지 않는다
+        int TOFH = 0;
+
         if (c->TNOH > 0)
         {
             memset(tnohBuffer, '\0', BUFFER_SIZE);
@@ -1028,6 +1029,9 @@ void update_tnoh(time_t *datetime)
                     strcat(tnohBuffer, newBuffer);
 
                     numTNOHfac++; // 항목 수 증감
+
+                    if (f->HAF.stat == 4)
+                        TOFH++;
                 }
 
                 f->TNOH = 0; // 시설 TNOH 플래그 해제
@@ -1052,8 +1056,12 @@ void update_tnoh(time_t *datetime)
             printf("%s %s%s\n", insertTime_str, buffer, crcBuffer);
 
             // TNOH 테이블에 저장
-            snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tnoh (tim_date, cmd, _data, crc, chim_id) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d);",
-                     insertTime_str, "TNOH", buffer + 4, crcBuffer, i + 1);
+            if (TOFH > 0 && off)
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tnoh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, %d);",
+                         insertTime_str, "TNOH", buffer + 4, crcBuffer, i + 1, 1);
+            else
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tnoh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, %d);",
+                         insertTime_str, "TNOH", buffer + 4, crcBuffer, i + 1, 0);
 
             execute_query(conn, query_str);
         }
@@ -1068,7 +1076,7 @@ void update_tnoh(time_t *datetime)
     snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d %02d:%02d",
              delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday, delete_time.tm_hour, delete_time.tm_min);
 
-    snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tnoh WHERE tim_date <= \'%s\';", deleteTime_str);
+    snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tnoh WHERE insert_time <= \'%s\';", deleteTime_str);
     execute_query(conn, query_str);
 
     release_conn(conn); // 데이터베이스 연결 해제
@@ -1077,7 +1085,7 @@ void update_tnoh(time_t *datetime)
 void process_day(time_t *datetime)
 {
     // 일일 데이터 생성
-    char query_str[BUFFER_SIZE], insertTime_str[50], endTime_str[50], beginTime_str[50], endHafTime_str[50], beginHafTime_str[50], deleteTime_str[50];
+    char query_str[BUFFER_SIZE], insertTime_str[50], endTime_str[50], beginTime_str[50], beginHafTime_str[50], deleteTime_str[50];
 
     struct tm *insert_time = localtime(datetime); // 현재 시간(아마도 다음날 0시 0분 0초)
     snprintf(insertTime_str, sizeof(insertTime_str), "%4d-%02d-%02d %02d:%02d:%02d", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday, insert_time->tm_hour, insert_time->tm_min, insert_time->tm_sec);
@@ -1088,7 +1096,6 @@ void process_day(time_t *datetime)
     snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d 00:05:00", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
     snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
     snprintf(beginHafTime_str, sizeof(beginHafTime_str), "%4d-%02d-%02d 00:30:00", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
-    snprintf(endHafTime_str, sizeof(endHafTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
 
     time_t delete_t = *datetime;
     delete_t -= (DAYSEC * 3); // 3일 전 시간
@@ -1106,7 +1113,7 @@ void process_day(time_t *datetime)
         for (int j = 0; j < c->num_facility; j++)
         {
             // 전일 5분 데이터 데이터베이스에서 읽어오기
-            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_05stat WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginTime_str, endTime_str, j, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_05stat WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginTime_str, endTime_str, j, i + 1);
 
             execute_query(conn, query_str);
             MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
@@ -1134,7 +1141,7 @@ void process_day(time_t *datetime)
                     f->SFIV.off = (FIVTDDH - total) + f->SFIV.off;
 
                 // j번 시설 3일 전 5분 상태 정보 클리어
-                snprintf(query_str, sizeof(query_str), "DELETE FROM t_05stat WHERE fac_id = %d AND chim_id = %d AND tim_date < \'%s%%\';",
+                snprintf(query_str, sizeof(query_str), "DELETE FROM t_05stat WHERE fac_id = %d AND chim_id = %d AND insert_time < \'%s%%\';",
                          j, i + 1, deleteTime_str);
                 execute_query(conn, query_str);
             }
@@ -1163,7 +1170,7 @@ void process_day(time_t *datetime)
         for (int j = 0; j < c->num_facility; j++)
         {
             // 전일 30분 데이터 데이터베이스에서 읽어오기
-            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_30stat WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginHafTime_str, endHafTime_str, j, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_30stat WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginHafTime_str, endTime_str, j, i + 1);
 
             execute_query(conn, query_str);
             MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
@@ -1191,7 +1198,7 @@ void process_day(time_t *datetime)
                     f->SHAF.off = (HAFTDDH - total) + f->SHAF.off;
 
                 // j번 시설 3일 전 30분 상태 정보 클리어
-                snprintf(query_str, sizeof(query_str), "DELETE FROM t_30stat WHERE fac_id = %d AND chim_id = %d AND tim_date < \'%s%%\';",
+                snprintf(query_str, sizeof(query_str), "DELETE FROM t_30stat WHERE fac_id = %d AND chim_id = %d AND insert_time < \'%s%%\';",
                          j, i + 1, deleteTime_str);
                 execute_query(conn, query_str);
             }
@@ -1267,28 +1274,28 @@ void update_tddh(time_t *datetime, int seg)
         if (seg == 1)
         {
             if (c->send_mode == 0)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tddh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);",
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tddh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);",
                          insertTime_str, "TDDH", buffer + 4, crcBuffer, i + 1);
             else
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tddh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);",
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tddh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);",
                          insertTime_str, "TDDH", buffer + 4, crcBuffer, i + 1);
         }
         else
         {
             if (c->send_mode == 2)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tddh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);",
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tddh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);",
                          insertTime_str, "TDDH", buffer + 4, crcBuffer, i + 1);
             else
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tddh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);",
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tddh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);",
                          insertTime_str, "TDDH", buffer + 4, crcBuffer, i + 1);
         }
         execute_query(conn, query_str);
 
         /*일일마감 전원단절 데이터 생성*/
         if (seg == 1)
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT insert_time FROM t_05tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
         else
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE tim_date >= \'%s\' AND tim_date <= \'%s\' AND off = 1 AND chim_id = %d;", beginHafTime_str, endHafTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT insert_time FROM t_30tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginHafTime_str, endHafTime_str, i + 1);
 
         execute_query(conn, query_str);
         MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
@@ -1341,16 +1348,16 @@ void update_tddh(time_t *datetime, int seg)
             if (seg == 1)
             {
                 if (c->send_mode == 0) // 30분 전송 모드인 경우, 5분 전원단절 데이터 전송하지 않음.
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh_day (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh_day (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
                 else
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh_day (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh_day (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
             }
             else
             {
                 if (c->send_mode == 2) // 5분 전송 모드인 경우, 30분 전원단절 데이터 전송하지 않음.
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh_day (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh_day (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
                 else
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh_day (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh_day (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
             }
 
             execute_query(conn, query_str);
@@ -1368,16 +1375,16 @@ void update_tddh(time_t *datetime, int seg)
 
     if (seg == 1)
     {
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tddh WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tddh WHERE insert_time <= \'%s\';", deleteTime_str);
         execute_query(conn, query_str);
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh_day WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh_day WHERE insert_time <= \'%s\';", deleteTime_str);
         execute_query(conn, query_str);
     }
     else
     {
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tddh WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tddh WHERE insert_time <= \'%s\';", deleteTime_str);
         execute_query(conn, query_str);
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh_day WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh_day WHERE insert_time <= \'%s\';", deleteTime_str);
         execute_query(conn, query_str);
     }
 
@@ -1390,7 +1397,7 @@ int check_off(TOFH_TIME *t)
     int year, mon, day, hour, min, sec, result;
 
     // 데이터베이스내 5분 데이터 마지막으로 저장 시간 확인
-    snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah ORDER BY tim_date DESC LIMIT 1;");
+    snprintf(query_str, sizeof(query_str), "SELECT insert_time FROM t_05tdah ORDER BY insert_time DESC LIMIT 1;");
 
     MYSQL *conn = get_conn(); // 데이터베이스 연결 획득
     execute_query(conn, query_str);
@@ -1431,7 +1438,7 @@ int check_off(TOFH_TIME *t)
     result = 1;
 
     // 데이터베이스내 30분 데이터 마지막으로 저장 시간 확인
-    snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah ORDER BY tim_date DESC LIMIT 1;");
+    snprintf(query_str, sizeof(query_str), "SELECT insert_time FROM t_30tdah ORDER BY insert_time DESC LIMIT 1;");
     execute_query(conn, query_str);
 
     res = mysql_store_result(conn); // 쿼리 결과 담기
@@ -1620,11 +1627,13 @@ void process_off(TOFH_TIME t)
 
 void update_tofh(time_t *begin, time_t *end, int seg)
 {
-    char dataTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE], beginTime_str[100], endTime_str[100];
+    char dataTime_str[50], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE], beginTime_str[50], endTime_str[50], insertTime_str[50];
+
+    time_t datetime;
 
     if (seg == 1)
     {
-        for (time_t datetime = *begin; datetime <= *end; datetime += FIVSEC)
+        for (datetime = *begin; datetime <= *end; datetime += FIVSEC)
         {
             update_5min_state(&datetime, 1);
             update_5min_relation(&datetime, 1);
@@ -1636,27 +1645,38 @@ void update_tofh(time_t *begin, time_t *end, int seg)
     }
     else
     {
-        for (time_t datetime = *begin; datetime <= *end; datetime += HAFSEC)
+        for (datetime = *begin; datetime <= *end; datetime += HAFSEC)
         {
             process_30min(&datetime, 1);
             update_tdah(&datetime, 0, 1);
-            update_tnoh(&datetime);
+            update_tnoh(&datetime, 1);
 
             enqueue_tdah_to_transmit(&datetime);
             usleep(10000); // 10msec delay
         }
     }
 
+    if (seg == 1)
+        datetime -= FIVSEC;
+    else
+        datetime -= HAFSEC;
+
     // TOFH 데이터 생성
     struct tm begin_time = *localtime(begin);
-    struct tm end_time = *localtime(end);
+    struct tm end_time = *localtime(&datetime);
 
     snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
              begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday,
              begin_time.tm_hour, begin_time.tm_min, begin_time.tm_sec);
+
     snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
              end_time.tm_year + 1900, end_time.tm_mon + 1, end_time.tm_mday,
              end_time.tm_hour, end_time.tm_min, end_time.tm_sec);
+
+    snprintf(insertTime_str, sizeof(insertTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             end_time.tm_year + 1900, end_time.tm_mon + 1, end_time.tm_mday,
+             end_time.tm_hour, end_time.tm_min, end_time.tm_sec);
+
     snprintf(dataTime_str, sizeof(dataTime_str), "%04d%02d%02d",
              begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
 
@@ -1666,11 +1686,11 @@ void update_tofh(time_t *begin, time_t *end, int seg)
     {
         if (seg == 1)
         {
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE tim_date BETWEEN \'%s\' AND \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
         }
         else
         {
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE tim_date BETWEEN \'%s\' AND \'%s\' AND off = 1 AND chim_id = %d", beginTime_str, endTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d", beginTime_str, endTime_str, i + 1);
         }
 
         execute_query(conn, query_str);
@@ -1717,24 +1737,24 @@ void update_tofh(time_t *begin, time_t *end, int seg)
 
             // 확인용
             if (seg == 1)
-                printf("전원단절 5분[%s]: %s%s\n", beginTime_str, buffer, crcBuffer);
+                printf("전원단절 5분[%s]: %s%s\n", insertTime_str, buffer, crcBuffer);
             else
-                printf("전원단절 30분[%s]: %s%s\n", beginTime_str, buffer, crcBuffer);
+                printf("전원단절 30분[%s]: %s%s\n", insertTime_str, buffer, crcBuffer);
 
             // TOFH 테이블에 저장
             if (seg == 1)
             {
                 if (c->send_mode == 0) // 30분 전송 모드인 경우, 5분 전원단절 데이터 전송하지 않음.
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", beginTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
                 else
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", beginTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
             }
             else
             {
                 if (c->send_mode == 2) // 5분 전송 모드인 경우, 30분 전원단절 데이터 전송하지 않음.
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", beginTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
                 else
-                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (tim_date, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", beginTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
+                    snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
             }
 
             execute_query(conn, query_str);
@@ -1751,13 +1771,13 @@ void update_tofh(time_t *begin, time_t *end, int seg)
              delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday, delete_time.tm_hour, delete_time.tm_min);
 
     if (seg == 1)
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh WHERE insert_time <= \'%s\';", deleteTime_str);
     else
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh WHERE tim_date <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh WHERE insert_time <= \'%s\';", deleteTime_str);
 
     execute_query(conn, query_str);
     release_conn(conn); // 데이터베이스 연결 해제
 
     // TOFH 전원단절 생성 데이터 전송할 큐에 담기
-    enqueue_tofh_to_transmit(begin);
+    enqueue_tofh_to_transmit(&datetime);
 }

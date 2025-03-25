@@ -24,7 +24,7 @@ void update_5min_relation(time_t *datetime, int power_off);
 void process_day(time_t *datetime);
 
 void update_tdah(time_t *datetime, int seg, int power_off);
-void update_tnoh(time_t *datetime);
+void update_tnoh(time_t *datetime, int off);
 void update_tddh(time_t *datetime, int seg);
 
 int check_off(TOFH_TIME *t);

@@ -252,6 +252,8 @@ void exit_client_socket()
 {
     close(clntfd);
     clntfd = -1;
+
+    printf("client-socket closed...\n");
 }
 
 int handle_response(uint8_t *data, ssize_t byte_num)
