@@ -929,9 +929,9 @@ void update_tdah(time_t *datetime, int seg, int off)
                 send = 0;
 
             if (TOFH > 0)
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (insert_time, insert_time, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 1, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (insert_time, tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 1, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
             else
-                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (insert_time, insert_time, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 0, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
+                snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tdah (insert_time, tim_date, off, cmd, _data, crc, chim_id, send) VALUES (\"%s\", \"%s\", 0, \"%s\", \"%s\", \"%s\", %d, %d);", insertTime_str, dataTime_str, "TDAH", buffer + 4, crcBuffer, i + 1, send);
         }
 
         execute_query(conn, query_str);
@@ -1089,12 +1089,12 @@ void process_day(time_t *datetime)
 
     struct tm *insert_time = localtime(datetime); // 현재 시간(아마도 다음날 0시 0분 0초)
     snprintf(insertTime_str, sizeof(insertTime_str), "%4d-%02d-%02d %02d:%02d:%02d", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday, insert_time->tm_hour, insert_time->tm_min, insert_time->tm_sec);
+    snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
 
     time_t begin_t = *datetime;
     begin_t -= DAYSEC; // 하루전 시간
     struct tm begin_time = *localtime(&begin_t);
     snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d 00:05:00", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
-    snprintf(endTime_str, sizeof(endTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
     snprintf(beginHafTime_str, sizeof(beginHafTime_str), "%4d-%02d-%02d 00:30:00", begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday);
 
     time_t delete_t = *datetime;
@@ -1113,7 +1113,18 @@ void process_day(time_t *datetime)
         for (int j = 0; j < c->num_facility; j++)
         {
             // 전일 5분 데이터 데이터베이스에서 읽어오기
-            snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_05stat WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginTime_str, endTime_str, j, i + 1);
+            snprintf(query_str, sizeof(query_str),
+                     "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END),"
+                     "COUNT(CASE WHEN stat = 1 THEN 1 END), "
+                     "COUNT(CASE WHEN stat = 2 THEN 1 END), "
+                     "COUNT(CASE WHEN stat = 4 THEN 1 END), "
+                     "COUNT(CASE WHEN stat = 8 THEN 1 END) "
+                     "FROM t_05stat "
+                     "WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' "
+                     "AND fac_id = %d AND chim_id = %d;",
+                     beginTime_str, endTime_str, j, i + 1);
+
+            printf("check fiv_day_process query: %s\n", query_str);
 
             execute_query(conn, query_str);
             MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
@@ -1171,6 +1182,8 @@ void process_day(time_t *datetime)
         {
             // 전일 30분 데이터 데이터베이스에서 읽어오기
             snprintf(query_str, sizeof(query_str), "SELECT COUNT(CASE WHEN stat = 0 THEN 1 END), COUNT(CASE WHEN stat = 1 THEN 1 END), COUNT(CASE WHEN stat = 2 THEN 1 END), COUNT(CASE WHEN stat = 4 THEN 1 END), COUNT(CASE WHEN stat = 8 THEN 1 END) FROM t_30stat WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND fac_id = %d AND chim_id = %d;", beginHafTime_str, endTime_str, j, i + 1);
+
+            printf("check haf_day_process query: %s\n", query_str);
 
             execute_query(conn, query_str);
             MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
