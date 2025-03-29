@@ -625,7 +625,7 @@ int pset_process(const uint8_t *recvData, int no_chimney)
                system_time.tm_hour, system_time.tm_min, system_time.tm_sec);
 
         // set system time
-
+        // time_t systemTime, setTime;
         time_t systemTime = mktime(&system_time);
         time_t setTime = mktime(&set_time);
 

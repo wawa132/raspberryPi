@@ -229,7 +229,7 @@ void execute_query(MYSQL *conn, const char *query_str)
     }
 }
 
-void enqueue_tdah_to_transmit(time_t *datetime)
+void enqueue_tdah_to_transmit(time_t *datetime, int off)
 {
     // rangeTime_str 은 TNOH 발생으로 인해 FIV 자료가 필요할 때, 시작 시점을 기록하는 버퍼
     char query_str[300], update_str[300], loadTime_str[50], rangeTime_str[50];
@@ -307,7 +307,8 @@ void enqueue_tdah_to_transmit(time_t *datetime)
         // miss_send_data_check
         if (c->time_resend == 9999 || (load_time->tm_hour == (c->time_resend / 100) && load_time->tm_min == (c->time_resend % 100)))
         {
-            enqueue_miss_to_transmit(datetime);
+            if (!off)
+                enqueue_miss_to_transmit(datetime);
         }
     }
 }
@@ -444,28 +445,43 @@ void enqueue_tofh_to_transmit(time_t *datetime)
 
 void enqueue_miss_to_transmit(time_t *datetime)
 {
-    char query_str[300], update_str[300], loadTime_str[50], loadHafTime_str[50], rangeTime_str[50];
+    char query_str[300], update_str[300], loadTime_str[50], loadHafTime_str[50], rangeTime_str[50], paramTime_str[50];
+
+    time_t param_t = *datetime;
+    struct tm param_time = *localtime(&param_t);
 
     time_t load_t = *datetime;
     load_t -= FIVSEC;
     struct tm load_time = *localtime(&load_t);
-    snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
-             load_time.tm_year + 1900, load_time.tm_mon + 1, load_time.tm_mday,
-             load_time.tm_hour, load_time.tm_min, load_time.tm_sec);
 
     time_t loadHaf_t = *datetime;
     loadHaf_t -= HAFSEC;
     struct tm loadHaf_time = *localtime(&loadHaf_t);
-    snprintf(loadHafTime_str, sizeof(loadHafTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
-             loadHaf_time.tm_year + 1900, loadHaf_time.tm_mon + 1, loadHaf_time.tm_mday,
-             loadHaf_time.tm_hour, loadHaf_time.tm_min, loadHaf_time.tm_sec);
 
     time_t range_t = *datetime;
     range_t -= (DAYSEC * 3);
     struct tm range_time = *localtime(&range_t);
+
+    snprintf(paramTime_str, sizeof(paramTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             param_time.tm_year + 1900, param_time.tm_mon + 1, param_time.tm_mday,
+             param_time.tm_hour, param_time.tm_min, param_time.tm_sec);
+
+    snprintf(loadTime_str, sizeof(loadTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             load_time.tm_year + 1900, load_time.tm_mon + 1, load_time.tm_mday,
+             load_time.tm_hour, load_time.tm_min, load_time.tm_sec);
+
+    snprintf(loadHafTime_str, sizeof(loadHafTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
+             loadHaf_time.tm_year + 1900, loadHaf_time.tm_mon + 1, loadHaf_time.tm_mday,
+             loadHaf_time.tm_hour, loadHaf_time.tm_min, loadHaf_time.tm_sec);
+
     snprintf(rangeTime_str, sizeof(rangeTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
              range_time.tm_year + 1900, range_time.tm_mon + 1, range_time.tm_mday,
              range_time.tm_hour, range_time.tm_min, range_time.tm_sec);
+
+    printf("miss data(PRM) enqueue: %s\n", paramTime_str);
+    printf("miss data(FIV) enqueue: %s\n", loadTime_str);
+    printf("miss data(HAF) enqueue: %s\n", loadHafTime_str);
+    printf("miss data(RNG) enqueue: %s\n", rangeTime_str);
 
     for (int i = 0; i < NUM_CHIMNEY; i++)
     {

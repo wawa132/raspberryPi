@@ -36,7 +36,7 @@ void *make_data()
                     update_tnoh(&produce_time, 0);
                 }
 
-                enqueue_tdah_to_transmit(&produce_time);
+                enqueue_tdah_to_transmit(&produce_time, 0);
             }
 
             // 일일마감 데이터 확인
@@ -1652,7 +1652,7 @@ void update_tofh(time_t *begin, time_t *end, int seg)
             update_5min_relation(&datetime, 1);
             update_tdah(&datetime, 1, 1);
 
-            enqueue_tdah_to_transmit(&datetime);
+            enqueue_tdah_to_transmit(&datetime, 1);
             usleep(10000); // 10msec delay
         }
     }
@@ -1664,7 +1664,7 @@ void update_tofh(time_t *begin, time_t *end, int seg)
             update_tdah(&datetime, 0, 1);
             update_tnoh(&datetime, 1);
 
-            enqueue_tdah_to_transmit(&datetime);
+            enqueue_tdah_to_transmit(&datetime, 1);
             usleep(10000); // 10msec delay
         }
     }

@@ -25,7 +25,7 @@ void release_conn(MYSQL *conn);
 void init_facility();
 void execute_query(MYSQL *conn, const char *query_str);
 
-void enqueue_tdah_to_transmit(time_t *datetime);
+void enqueue_tdah_to_transmit(time_t *datetime, int off);
 void enqueue_tddh_to_transmit(time_t *datetime);
 void enqueue_tofh_to_transmit(time_t *datetime);
 void enqueue_miss_to_transmit(time_t *datetime);
