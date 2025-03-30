@@ -119,7 +119,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
         {
             printf("client-socket connection with the server failed...\n");
             exit_client_socket();
-            return -1;
+            return -3;
         }
         else
         {
@@ -168,7 +168,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
             if (attempt == 1)
             {
                 exit_client_socket();
-                return -1;
+                return -2;
             }
             else
                 continue;

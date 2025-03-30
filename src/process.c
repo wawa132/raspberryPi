@@ -1306,9 +1306,9 @@ void update_tddh(time_t *datetime, int seg)
 
         /*일일마감 전원단절 데이터 생성*/
         if (seg == 1)
-            snprintf(query_str, sizeof(query_str), "SELECT insert_time FROM t_05tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
         else
-            snprintf(query_str, sizeof(query_str), "SELECT insert_time FROM t_30tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginHafTime_str, endHafTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginHafTime_str, endHafTime_str, i + 1);
 
         execute_query(conn, query_str);
         MYSQL_RES *res = mysql_store_result(conn); // 쿼리 결과 담기
