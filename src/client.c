@@ -94,7 +94,6 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
         // 2 try for connection
         for (int con_attempt = 0; con_attempt < 2; con_attempt++)
         {
-
             // socket create and verification
             if ((clntfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
             {
@@ -102,7 +101,10 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                 if (con_attempt == 1)
                     return -3;
                 else
+                {
+                    sleep(1);
                     continue;
+                }
             }
             else
             {
@@ -121,7 +123,10 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                 if (con_attempt == 1)
                     return -3;
                 else
+                {
+                    sleep(1);
                     continue;
+                }
             }
 
             // connect the client socket to server socket
@@ -132,7 +137,10 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                 if (con_attempt == 1)
                     return -3;
                 else
+                {
+                    sleep(1);
                     continue;
+                }
             }
             else
             {
