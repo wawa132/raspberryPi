@@ -91,59 +91,73 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
 
     if (clntfd == -1)
     {
-        // socket create and verification
-        if ((clntfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        // 2 try for connection
+        for (int con_attempt = 0; con_attempt < 2; con_attempt++)
         {
-            printf("client-socket creation failed...\n");
-            return -3;
-        }
-        else
-        {
-            printf("client-socket successfully created...\n");
+
+            // socket create and verification
+            if ((clntfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+            {
+                printf("client-socket creation failed...\n");
+                if (con_attempt == 1)
+                    return -3;
+                else
+                    continue;
+            }
+            else
+            {
+                printf("client-socket successfully created...\n");
+            }
+
+            bzero(&servaddr, sizeof(servaddr));
+
+            // assign IP, PORT
+            servaddr.sin_family = AF_INET;
+            servaddr.sin_port = htons(PORT);
+            if (inet_pton(AF_INET, IP, &servaddr.sin_addr) <= 0)
+            {
+                printf("client-socket assign IP failed...(Invalid IP)\n");
+                exit_client_socket();
+                if (con_attempt == 1)
+                    return -3;
+                else
+                    continue;
+            }
+
+            // connect the client socket to server socket
+            if (connect(clntfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0)
+            {
+                printf("client-socket connection with the server failed...\n");
+                exit_client_socket();
+                if (con_attempt == 1)
+                    return -3;
+                else
+                    continue;
+            }
+            else
+            {
+                printf("client-socket connect to the server...\n");
+            }
         }
 
-        bzero(&servaddr, sizeof(servaddr));
+        // set timeout var
+        struct timeval timeout;
+        timeout.tv_sec = TIMEOUT;
+        timeout.tv_usec = 0;
 
-        // assign IP, PORT
-        servaddr.sin_family = AF_INET;
-        servaddr.sin_port = htons(PORT);
-        if (inet_pton(AF_INET, IP, &servaddr.sin_addr) <= 0)
+        // 30s timeout setup
+        if (setsockopt(clntfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
         {
-            printf("client-socket assign IP failed...(Invalid IP)\n");
+            printf("client-socket send timeout setup failed...\n");
             exit_client_socket();
             return -3;
         }
-
-        // connect the client socket to server socket
-        if (connect(clntfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0)
+        if (setsockopt(clntfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
         {
-            printf("client-socket connection with the server failed...\n");
+            printf("client-socket receive timeout setup failed...\n");
             exit_client_socket();
             return -3;
         }
-        else
-        {
-            printf("client-socket to the server...\n");
-        }
-    }
-
-    // set timeout var
-    struct timeval timeout;
-    timeout.tv_sec = TIMEOUT;
-    timeout.tv_usec = 0;
-
-    // 30s timeout setup
-    if (setsockopt(clntfd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) < 0)
-    {
-        printf("client-socket send timeout setup failed...\n");
-        exit_client_socket();
-        return -3;
-    }
-    if (setsockopt(clntfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-    {
-        printf("client-socket receive timeout setup failed...\n");
-        exit_client_socket();
-        return -3;
     }
 
     // send the message to server, if failed send try one more...
