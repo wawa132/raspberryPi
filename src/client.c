@@ -145,6 +145,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
             else
             {
                 printf("client-socket connect to the server...\n");
+                break;
             }
         }
 
