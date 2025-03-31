@@ -205,40 +205,12 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
             ssize_t recv_bytes = recv(clntfd, recv_buffer, BUFFER_SIZE, 0);
             if (recv_bytes > 0) // 데이터 수신 처리
             {
-                if (recv_bytes == 1)
-                {
-                    if (recv_buffer[0] == ACK)
-                    {
-                        printf("client-socket received ACK(attempt %d)\n", attempt + 1);
-                        return 0;
-                    }
-                    else if (recv_buffer[0] == NAK)
-                    {
-                        printf("client-socket received NAK(attempt %d)\n", attempt + 1);
-                        if (attempt == 1)
-                        {
-                            // exit_client_socket();
-                            return -1;
-                        }
+                int recv_result = handle_response(recv_buffer, recv_bytes);
 
-                        break;
-                    }
-                    else
-                    {
-                        printf("client-socket received unknown data: %02X(attempt %d)\n", recv_buffer[0], attempt + 1);
-                        if (attempt == 1)
-                        {
-                            // exit_client_socket();
-                            return -1;
-                        }
-
-                        break;
-                    }
-                }
+                if (recv_result == 0)
+                    return 0;
                 else
-                {
-                    printf("client-socket received byte: %ld\n", recv_bytes);
-                }
+                    break;
             }
             else if (recv_bytes < 0 && errno == EWOULDBLOCK)
             {
