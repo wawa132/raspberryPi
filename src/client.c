@@ -353,6 +353,8 @@ int handle_response(uint8_t *data, ssize_t byte_num)
                             received_time.tm_mday = day;
                             received_time.tm_hour = hour;
                             received_time.tm_min = min;
+                            if (sec == 0)
+                                sec = 1;
                             received_time.tm_sec = sec;
                             received_time.tm_isdst = -1;
 

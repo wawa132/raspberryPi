@@ -41,7 +41,7 @@ void *make_data()
 
             // 일일마감 데이터 확인
             struct tm day_time = *localtime(&produce_time);
-            if (day_time.tm_hour == 0 && day_time.tm_min == 2 && day_time.tm_sec == 0)
+            if (day_time.tm_hour == 0 && day_time.tm_min == 5 && day_time.tm_sec == 0)
             {
                 // 매일 0시 2분 0초에 일일마감 데이터 생성
                 process_day(&produce_time);
@@ -1531,7 +1531,6 @@ void *tofh_thread(void *arg)
 
 void process_off(TOFH_TIME t)
 {
-    bool first_day = true;
     time_t begin_t = mktime(&t.off_fiv);
     time_t end_t = mktime(&t.off_now);
 
@@ -1544,18 +1543,33 @@ void process_off(TOFH_TIME t)
 
     while (begin_t <= end_t)
     {
-        // 시작시간과 종료시간(시작일 23:59:59) 설정
+        // 시작시간과 종료시간(시작일 다음날의 00:00:00) 설정
         struct tm begin_fiv_time = t.off_fiv;
         struct tm begin_haf_time = t.off_haf;
-        struct tm end_time = t.off_fiv;
-        end_time.tm_hour = 23;
-        end_time.tm_min = 59;
-        end_time.tm_sec = 59;
-
-        // 시간 비교를 위한 타임 변수 변환
         time_t begin_fiv = mktime(&begin_fiv_time);
         time_t begin_haf = mktime(&begin_haf_time);
+
+        struct tm end_time = t.off_fiv;
+        end_time.tm_hour = 0;
+        end_time.tm_min = 0;
+        end_time.tm_sec = 0;
+
+        // 시간 비교를 위한 타임 변수 변환
         time_t end = mktime(&end_time);
+        end += DAYSEC;
+
+        // 시작시간 종료시간 확인
+        printf("전원단절 생성(FIV) 시작: %4d-%02d-%02d %02d:%02d:%02d\n",
+               begin_fiv_time.tm_year + 1900, begin_fiv_time.tm_mon + 1, begin_fiv_time.tm_mday,
+               begin_fiv_time.tm_hour, begin_fiv_time.tm_min, begin_fiv_time.tm_sec);
+        printf("전원단절 생성(HAF) 시작: %4d-%02d-%02d %02d:%02d:%02d\n",
+               begin_haf_time.tm_year + 1900, begin_haf_time.tm_mon + 1, begin_haf_time.tm_mday,
+               begin_haf_time.tm_hour, begin_haf_time.tm_min, begin_haf_time.tm_sec);
+
+        end_time = *localtime(&end);
+        printf("전원단절 생성(ALL) 종료: %4d-%02d-%02d %02d:%02d:%02d\n",
+               end_time.tm_year + 1900, end_time.tm_mon + 1, end_time.tm_mday,
+               end_time.tm_hour, end_time.tm_min, end_time.tm_sec);
 
         // 종료시간이 전원단절생성 스레드에서 받은 현재시간보다 큰 경우,
         // 종료시간을 생성했던 현재시간으로 수정
@@ -1563,16 +1577,16 @@ void process_off(TOFH_TIME t)
         {
             end_time = t.off_now;
             end = end_t;
+
+            printf("전원단절 생성(ALL) 종료 수정: %4d-%02d-%02d %02d:%02d:%02d\n",
+                   end_time.tm_year + 1900, end_time.tm_mon + 1, end_time.tm_mday,
+                   end_time.tm_hour, end_time.tm_min, end_time.tm_sec);
         }
 
-        if (first_day)
-        {
-            // 첫째날의 경우, 읽어온 데이터 시간이 기존 존재하는 데이터를 포함하고 있으므로,
-            // 다음 시간부터 생성할 수 있도록 시간을 보정해준다.
-            begin_fiv += FIVSEC;
-            begin_haf += HAFSEC;
-            first_day = false;
-        }
+        // 첫째날의 경우, 읽어온 데이터 시간이 기존 존재하는 데이터를 포함하고 있으므로,
+        // 다음 시간부터 생성할 수 있도록 시간을 보정해준다.
+        begin_fiv += FIVSEC;
+        begin_haf += HAFSEC;
 
         int off_data_fiv_num = 0; // 전원단절 구간 5분 데이터 갯수
         int off_data_haf_num = 0; // 전원단절 구간 30분 데이터 갯수
@@ -1586,9 +1600,9 @@ void process_off(TOFH_TIME t)
         if (off_data_haf_num > 0)
             update_tofh(&begin_haf, &end, 0);
 
-        // 0시 2분 보다 빠른 시점에 전원단절 발생 시,
+        // 0시 5분 보다 빠른 시점에 전원단절 발생 시,
         // 일일마감 데이터 생성
-        if (begin_fiv_time.tm_hour < 1 && begin_fiv_time.tm_min < 2)
+        if (begin_fiv_time.tm_hour < 1 && begin_fiv_time.tm_min < 6)
         {
             process_day(&begin_fiv);
             update_tddh(&begin_fiv, 1);
@@ -1597,7 +1611,7 @@ void process_off(TOFH_TIME t)
             enqueue_tddh_to_transmit(&begin_fiv);
         }
 
-        // 다음날 00시 00분부터 시작으로 변경
+        // 다음날 00시 00분 부터 시작으로 변경
         for (int i = 0; i < 2; i++)
         {
             struct tm *nextTime;
@@ -1629,6 +1643,7 @@ void process_off(TOFH_TIME t)
                     }
                 }
             }
+
             nextTime->tm_hour = 0;
             nextTime->tm_min = 0;
             nextTime->tm_sec = 0;
