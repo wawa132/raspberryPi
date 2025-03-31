@@ -1590,9 +1590,9 @@ void process_off(TOFH_TIME t)
 
         int off_data_fiv_num = 0; // 전원단절 구간 5분 데이터 갯수
         int off_data_haf_num = 0; // 전원단절 구간 30분 데이터 갯수
-        if (begin_fiv < end)
+        if (begin_fiv <= end)
             off_data_fiv_num = ((end - begin_fiv) / FIVSEC) + 1; // '+1'은 시작 시점 데이터 갯수 포함
-        if (begin_haf < end)
+        if (begin_haf <= end)
             off_data_haf_num = ((end - begin_haf) / HAFSEC) + 1; // '+1'은 시작 시점 데이터 갯수 포함
 
         if (off_data_fiv_num > 0)
