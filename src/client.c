@@ -176,10 +176,9 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
         if (send_byte < 0 && errno == EWOULDBLOCK) // send timeout
         {
             printf("client-socket data transmit timeout(attempt %d)\n", attempt + 1);
-
             if (attempt == 1)
             {
-                exit_client_socket();
+                // exit_client_socket();
                 return -1;
             }
             else
@@ -190,7 +189,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
             printf("client-socket data transmit failed...(attempt %d)\n", attempt + 1);
             if (attempt == 1)
             {
-                exit_client_socket();
+                // exit_client_socket();
                 return -2;
             }
             else
@@ -218,7 +217,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                         printf("client-socket received NAK(attempt %d)\n", attempt + 1);
                         if (attempt == 1)
                         {
-                            exit_client_socket();
+                            // exit_client_socket();
                             return -1;
                         }
 
@@ -229,7 +228,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                         printf("client-socket received unknown data: %02X(attempt %d)\n", recv_buffer[0], attempt + 1);
                         if (attempt == 1)
                         {
-                            exit_client_socket();
+                            // exit_client_socket();
                             return -1;
                         }
 
@@ -246,7 +245,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                 printf("client-socket data received timeout(attempt %d)\n", attempt + 1);
                 if (attempt == 1)
                 {
-                    exit_client_socket();
+                    // exit_client_socket();
                     return -2;
                 }
 
@@ -257,7 +256,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                 printf("client-socket data recieved failed...(attempt %d)\n", attempt + 1);
                 if (attempt == 1)
                 {
-                    exit_client_socket();
+                    // exit_client_socket();
                     return -2;
                 }
 
@@ -267,7 +266,7 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
     }
 
     // close the socket
-    exit_client_socket();
+    // exit_client_socket();
     return -1;
 }
 
