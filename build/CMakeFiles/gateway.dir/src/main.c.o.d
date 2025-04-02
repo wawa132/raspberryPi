@@ -162,4 +162,5 @@ CMakeFiles/gateway.dir/src/main.c.o: /home/pi/gateway/src/main.c \
  /home/pi/gateway/include/database.h /home/pi/gateway/include/process.h \
  /home/pi/gateway/include/crc16.h /home/pi/gateway/include/queue.h \
  /home/pi/gateway/include/rawdata.h /home/pi/gateway/include/server.h \
- /home/pi/gateway/include/seed.h /home/pi/gateway/include/client.h
+ /home/pi/gateway/include/seed.h /home/pi/gateway/include/client.h \
+ /home/pi/gateway/include/systime.h

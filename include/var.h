@@ -120,12 +120,13 @@ extern CHIMNEY chimney[CHIMNEY_NUM];
 extern INFORM info[CHIMNEY_NUM];
 extern TOFH_TIME off_time[2]; // [0] 부팅 후 전원단절 구간, [1] 서버 시간 동기화 오차로 인한 전원단절 구간
 
-extern bool RUNNING;
+extern bool RUNNING, sec_checker, min_checker;
 extern uint8_t NUM_CHIMNEY;
 extern uint8_t request_data;
 extern uint16_t SYNC_TIME;
 extern int32_t sensor_data[MAX_NUM];
 extern pthread_t thread[MAX_THREAD];
+extern pthread_mutex_t time_mtx;
 
 extern time_t now, before_now, produce_time;
 

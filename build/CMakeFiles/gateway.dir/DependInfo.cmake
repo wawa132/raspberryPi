@@ -18,6 +18,7 @@ set(CMAKE_DEPENDS_DEPENDENCY_FILES
   "/home/pi/gateway/src/rawdata.c" "CMakeFiles/gateway.dir/src/rawdata.c.o" "gcc" "CMakeFiles/gateway.dir/src/rawdata.c.o.d"
   "/home/pi/gateway/src/seed.c" "CMakeFiles/gateway.dir/src/seed.c.o" "gcc" "CMakeFiles/gateway.dir/src/seed.c.o.d"
   "/home/pi/gateway/src/server.c" "CMakeFiles/gateway.dir/src/server.c.o" "gcc" "CMakeFiles/gateway.dir/src/server.c.o.d"
+  "/home/pi/gateway/src/systime.c" "CMakeFiles/gateway.dir/src/systime.c.o" "gcc" "CMakeFiles/gateway.dir/src/systime.c.o.d"
   "/home/pi/gateway/src/var.c" "CMakeFiles/gateway.dir/src/var.c.o" "gcc" "CMakeFiles/gateway.dir/src/var.c.o.d"
   )
 

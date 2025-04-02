@@ -345,7 +345,15 @@ int handle_response(uint8_t *data, ssize_t byte_num)
 
                             if (difftime(serverTime, systemTime) > FIVSEC || difftime(systemTime, serverTime) > FIVSEC)
                             {
+                                // prevent time process overlapped
+                                pthread_mutex_lock(&time_mtx);
+
                                 // set system time
+                                set_system_time(received_time, 0);
+
+                                pthread_mutex_unlock(&time_mtx);
+                                sec_checker = true;
+                                min_checker = true;
 
                                 // 서버 시간이 5분이상 빠른 경우 tofh 데이터 생성
                                 if (difftime(serverTime, systemTime) > FIVSEC)

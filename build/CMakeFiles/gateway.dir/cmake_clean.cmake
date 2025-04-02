@@ -19,6 +19,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/gateway.dir/src/seed.c.o.d"
   "CMakeFiles/gateway.dir/src/server.c.o"
   "CMakeFiles/gateway.dir/src/server.c.o.d"
+  "CMakeFiles/gateway.dir/src/systime.c.o"
+  "CMakeFiles/gateway.dir/src/systime.c.o.d"
   "CMakeFiles/gateway.dir/src/var.c.o"
   "CMakeFiles/gateway.dir/src/var.c.o.d"
   "gateway"

@@ -13,5 +13,6 @@ void exit_handler(int signum);
 void time_process();
 void thread_create();
 void thread_join();
+void write_time_log(const char *message, time_t process_time);
 
 #endif

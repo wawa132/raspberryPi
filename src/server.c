@@ -626,7 +626,15 @@ int pset_process(const uint8_t *recvData, int no_chimney)
                system_time.tm_year + 1900, system_time.tm_mon + 1, system_time.tm_mday,
                system_time.tm_hour, system_time.tm_min, system_time.tm_sec);
 
+        // prevent time process overlapped
+        pthread_mutex_lock(&time_mtx);
+
         // set system time
+        set_system_time(set_time, 1);
+
+        pthread_mutex_unlock(&time_mtx);
+        sec_checker = true;
+        min_checker = true;
 
         // time_t systemTime, setTime;
         time_t systemTime = mktime(&system_time);

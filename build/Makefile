@@ -369,6 +369,30 @@ src/server.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/server.c.s
 .PHONY : src/server.c.s
 
+src/systime.o: src/systime.c.o
+.PHONY : src/systime.o
+
+# target to build an object file
+src/systime.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/systime.c.o
+.PHONY : src/systime.c.o
+
+src/systime.i: src/systime.c.i
+.PHONY : src/systime.i
+
+# target to preprocess a source file
+src/systime.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/systime.c.i
+.PHONY : src/systime.c.i
+
+src/systime.s: src/systime.c.s
+.PHONY : src/systime.s
+
+# target to generate assembly for a file
+src/systime.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/gateway.dir/build.make CMakeFiles/gateway.dir/src/systime.c.s
+.PHONY : src/systime.c.s
+
 src/var.o: src/var.c.o
 .PHONY : src/var.o
 
@@ -432,6 +456,9 @@ help:
 	@echo "... src/server.o"
 	@echo "... src/server.i"
 	@echo "... src/server.s"
+	@echo "... src/systime.o"
+	@echo "... src/systime.i"
+	@echo "... src/systime.s"
 	@echo "... src/var.o"
 	@echo "... src/var.i"
 	@echo "... src/var.s"

@@ -6,5 +6,6 @@
         "makefile": "c",
         "Makefile": "makefile",
         "random": "c"
-    }
+    },
+    "terminal.integrated.scrollback": 10000
 }
