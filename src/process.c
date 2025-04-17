@@ -1590,7 +1590,7 @@ void process_off(TOFH_TIME t)
 
         // 0시 5분 보다 빠른 시점에 전원단절 발생 시,
         // 일일마감 데이터 생성
-        if (begin_fiv_time.tm_hour < 1 && begin_fiv_time.tm_min < 6)
+        if (begin_fiv_time.tm_hour < 1 && begin_fiv_time.tm_min < 5)
         {
             process_day(&begin_fiv);
             update_tddh(&begin_fiv, 1);
