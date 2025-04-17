@@ -1223,12 +1223,6 @@ void update_tddh(time_t *datetime, int seg)
     snprintf(beginHafTime_str, sizeof(beginHafTime_str), "%4d-%02d-%02d 00:30:00", data_time.tm_year + 1900, data_time.tm_mon + 1, data_time.tm_mday);
     snprintf(endHafTime_str, sizeof(endHafTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
 
-    time_t delete_t = *datetime;
-    delete_t -= (DAYSEC * 30);
-    struct tm delete_time = *localtime(&delete_t);
-    snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d",
-             delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday);
-
     MYSQL *conn = get_conn(); // 데이터베이스 연결 획득
 
     for (int i = 0; i < NUM_CHIMNEY; i++)
@@ -1360,7 +1354,6 @@ void update_tddh(time_t *datetime, int seg)
     delete_t -= (DAYSEC * 30);
     struct tm delete_time = *localtime(&delete_t);
 
-    char deleteTime_str[100];
     snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d %02d:%02d",
              delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday, delete_time.tm_hour, delete_time.tm_min);
 
