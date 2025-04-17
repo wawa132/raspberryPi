@@ -936,7 +936,7 @@ void update_tdah(time_t *datetime, int seg, int off)
 
         execute_query(conn, query_str);
 
-        if (TOFH > 0 && off == 0) // 해당 구간은 전원단절 데이터도 생성해줘야 함.
+        if (TOFH == c->num_facility && off == 0) // 해당 구간은 전원단절 데이터도 생성해줘야 함.
         {
             snprintf(buffer, sizeof(buffer), "TOFH%7s%3s", c->business, c->chimney);
             uint16_t total_len = 34 + (1 * 4);
@@ -969,22 +969,6 @@ void update_tdah(time_t *datetime, int seg, int off)
             execute_query(conn, query_str);
         }
     }
-
-    // 30일 전 데이터 삭제
-    time_t delete_t = *datetime;
-    delete_t -= (DAYSEC * 30);
-    struct tm delete_time = *localtime(&delete_t);
-
-    char deleteTime_str[100];
-    snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d %02d:%02d",
-             delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday, delete_time.tm_hour, delete_time.tm_min);
-
-    if (seg == 1)
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tdah WHERE insert_time <= \'%s\';", deleteTime_str);
-    else
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tdah WHERE insert_time <= \'%s\';", deleteTime_str);
-
-    execute_query(conn, query_str);
     release_conn(conn);
 }
 
@@ -1067,18 +1051,6 @@ void update_tnoh(time_t *datetime, int off)
         }
     }
 
-    // 30일 전 데이터 삭제
-    time_t delete_t = *datetime;
-    delete_t -= (DAYSEC * 30);
-    struct tm delete_time = *localtime(&delete_t);
-
-    char deleteTime_str[100];
-    snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d %02d:%02d",
-             delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday, delete_time.tm_hour, delete_time.tm_min);
-
-    snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tnoh WHERE insert_time <= \'%s\';", deleteTime_str);
-    execute_query(conn, query_str);
-
     release_conn(conn); // 데이터베이스 연결 해제
 }
 
@@ -1147,9 +1119,9 @@ void process_day(time_t *datetime)
                 f->SFIV.chk = atoi(row[4]); // 점검중(8)
 
                 // 수집되지 않은 자료는 전원단절로 처리
-                int total = f->SFIV.nrm + f->SFIV.low + f->SFIV.com + f->SFIV.off + f->SFIV.chk;
-                if (total <= FIVTDDH)
-                    f->SFIV.off = (FIVTDDH - total) + f->SFIV.off;
+                f->SFIV.total = f->SFIV.nrm + f->SFIV.low + f->SFIV.com + f->SFIV.off + f->SFIV.chk;
+                /*if (total <= FIVTDDH)
+                    f->SFIV.off = (FIVTDDH - total) + f->SFIV.off;*/
 
                 // j번 시설 3일 전 5분 상태 정보 클리어
                 snprintf(query_str, sizeof(query_str), "DELETE FROM t_05stat WHERE fac_id = %d AND chim_id = %d AND insert_time < \'%s%%\';",
@@ -1206,9 +1178,9 @@ void process_day(time_t *datetime)
                 f->SHAF.chk = atoi(row[4]); // 점검중(8)
 
                 // 수집되지 않은 자료는 전원단절로 처리
-                int total = f->SHAF.nrm + f->SHAF.low + f->SHAF.com + f->SHAF.off + f->SHAF.chk;
-                if (total <= HAFTDDH)
-                    f->SHAF.off = (HAFTDDH - total) + f->SHAF.off;
+                f->SHAF.total = f->SHAF.nrm + f->SHAF.low + f->SHAF.com + f->SHAF.off + f->SHAF.chk;
+                /*if (total <= HAFTDDH)
+                    f->SHAF.off = (HAFTDDH - total) + f->SHAF.off;*/
 
                 // j번 시설 3일 전 30분 상태 정보 클리어
                 snprintf(query_str, sizeof(query_str), "DELETE FROM t_30stat WHERE fac_id = %d AND chim_id = %d AND insert_time < \'%s%%\';",
@@ -1235,7 +1207,7 @@ void process_day(time_t *datetime)
 
 void update_tddh(time_t *datetime, int seg)
 {
-    char dataTime_str[100], insertTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE], endTime_str[50], beginTime_str[50], endHafTime_str[50], beginHafTime_str[50];
+    char dataTime_str[100], insertTime_str[100], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE], endTime_str[50], beginTime_str[50], endHafTime_str[50], beginHafTime_str[50], deleteTime_str[50];
 
     time_t data_t = *datetime;
     data_t -= DAYSEC;
@@ -1251,6 +1223,12 @@ void update_tddh(time_t *datetime, int seg)
     snprintf(beginHafTime_str, sizeof(beginHafTime_str), "%4d-%02d-%02d 00:30:00", data_time.tm_year + 1900, data_time.tm_mon + 1, data_time.tm_mday);
     snprintf(endHafTime_str, sizeof(endHafTime_str), "%4d-%02d-%02d 00:00:00", insert_time->tm_year + 1900, insert_time->tm_mon + 1, insert_time->tm_mday);
 
+    time_t delete_t = *datetime;
+    delete_t -= (DAYSEC * 30);
+    struct tm delete_time = *localtime(&delete_t);
+    snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d",
+             delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday);
+
     MYSQL *conn = get_conn(); // 데이터베이스 연결 획득
 
     for (int i = 0; i < NUM_CHIMNEY; i++)
@@ -1261,9 +1239,9 @@ void update_tddh(time_t *datetime, int seg)
         uint16_t total_len = 42 + (c->num_facility * 21);
 
         if (seg == 1)
-            snprintf(newBuffer, sizeof(newBuffer), "%4dFIV%8s%3d%3d%3d%2d", total_len, dataTime_str, 288, 288 - c->facility[0].SFIV.off, c->facility[0].SFIV.off, c->num_facility);
+            snprintf(newBuffer, sizeof(newBuffer), "%4dFIV%8s%3d%3d%3d%2d", total_len, dataTime_str, c->facility[0].SFIV.total, c->facility[0].SFIV.total - c->facility[0].SFIV.off, c->facility[0].SFIV.off, c->num_facility);
         else
-            snprintf(newBuffer, sizeof(newBuffer), "%4dHAF%8s%3d%3d%3d%2d", total_len, dataTime_str, 48, 48 - c->facility[0].SHAF.off, c->facility[0].SHAF.off, c->num_facility);
+            snprintf(newBuffer, sizeof(newBuffer), "%4dHAF%8s%3d%3d%3d%2d", total_len, dataTime_str, c->facility[0].SHAF.total, c->facility[0].SHAF.total - c->facility[0].SHAF.off, c->facility[0].SHAF.off, c->num_facility);
         strcat(buffer, newBuffer);
 
         for (int j = 0; j < c->num_facility; j++)
@@ -1388,16 +1366,26 @@ void update_tddh(time_t *datetime, int seg)
 
     if (seg == 1)
     {
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tddh WHERE insert_time <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tdah WHERE insert_time <= \'%s%%\';", deleteTime_str);
         execute_query(conn, query_str);
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh_day WHERE insert_time <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tddh WHERE insert_time <= \'%s%%\';", deleteTime_str);
+        execute_query(conn, query_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh WHERE insert_time <= \'%s%%\';", deleteTime_str);
+        execute_query(conn, query_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh_day WHERE insert_time <= \'%s%%\';", deleteTime_str);
         execute_query(conn, query_str);
     }
     else
     {
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tddh WHERE insert_time <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tdah WHERE insert_time <= \'%s%%\';", deleteTime_str);
         execute_query(conn, query_str);
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh_day WHERE insert_time <= \'%s\';", deleteTime_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tnoh WHERE insert_time <= \'%s%%\';", deleteTime_str);
+        execute_query(conn, query_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tddh WHERE insert_time <= \'%s%%\';", deleteTime_str);
+        execute_query(conn, query_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh WHERE insert_time <= \'%s%%\';", deleteTime_str);
+        execute_query(conn, query_str);
+        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh_day WHERE insert_time <= \'%s%%\';", deleteTime_str);
         execute_query(conn, query_str);
     }
 
@@ -1531,6 +1519,8 @@ void *tofh_thread(void *arg)
 
 void process_off(TOFH_TIME t)
 {
+    int day_over = 0;
+
     time_t begin_t = mktime(&t.off_fiv);
     time_t end_t = mktime(&t.off_now);
 
@@ -1540,6 +1530,11 @@ void process_off(TOFH_TIME t)
     printf("전원단절구간 데이터 생성 종료: %4d-%02d-%02d %02d:%02d:%02d\n",
            t.off_now.tm_year + 1900, t.off_now.tm_mon + 1, t.off_now.tm_mday,
            t.off_now.tm_hour, t.off_now.tm_min, t.off_now.tm_sec);
+
+    if (t.off_fiv.tm_mday != t.off_now.tm_mday)
+        day_over = 1;
+    else
+        day_over = 0;
 
     while (begin_t <= end_t)
     {
@@ -1596,9 +1591,9 @@ void process_off(TOFH_TIME t)
             off_data_haf_num = ((end - begin_haf) / HAFSEC) + 1; // '+1'은 시작 시점 데이터 갯수 포함
 
         if (off_data_fiv_num > 0)
-            update_tofh(&begin_fiv, &end, 1);
+            update_tofh(&begin_fiv, &end, 1, day_over);
         if (off_data_haf_num > 0)
-            update_tofh(&begin_haf, &end, 0);
+            update_tofh(&begin_haf, &end, 0, day_over);
 
         // 0시 5분 보다 빠른 시점에 전원단절 발생 시,
         // 일일마감 데이터 생성
@@ -1653,7 +1648,7 @@ void process_off(TOFH_TIME t)
     }
 }
 
-void update_tofh(time_t *begin, time_t *end, int seg)
+void update_tofh(time_t *begin, time_t *end, int seg, int day_over)
 {
     char dataTime_str[50], buffer[BUFFER_SIZE], newBuffer[BUFFER_SIZE], crcBuffer[5], query_str[BUFFER_SIZE], beginTime_str[50], endTime_str[50], insertTime_str[50];
 
@@ -1714,11 +1709,11 @@ void update_tofh(time_t *begin, time_t *end, int seg)
     {
         if (seg == 1)
         {
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d;", beginTime_str, endTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_05tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d FOR UPDATE;", beginTime_str, endTime_str, i + 1);
         }
         else
         {
-            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d", beginTime_str, endTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT tim_date FROM t_30tdah WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND off = 1 AND chim_id = %d FOR UPDATE", beginTime_str, endTime_str, i + 1);
         }
 
         execute_query(conn, query_str);
@@ -1772,14 +1767,14 @@ void update_tofh(time_t *begin, time_t *end, int seg)
             // TOFH 테이블에 저장
             if (seg == 1)
             {
-                if (c->send_mode == 0) // 30분 전송 모드인 경우, 5분 전원단절 데이터 전송하지 않음.
+                if (c->send_mode == 0 || day_over) // 30분 전송 모드인 경우, 5분 전원단절 데이터 전송하지 않음.
                     snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
                 else
                     snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_05tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
             }
             else
             {
-                if (c->send_mode == 2) // 5분 전송 모드인 경우, 30분 전원단절 데이터 전송하지 않음.
+                if (c->send_mode == 2 || day_over) // 5분 전송 모드인 경우, 30분 전원단절 데이터 전송하지 않음.
                     snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 1);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
                 else
                     snprintf(query_str, sizeof(query_str), "INSERT IGNORE INTO t_30tofh (insert_time, cmd, _data, crc, chim_id, send) VALUE (\"%s\", \"%s\", \"%s\", \"%s\", %d, 0);", insertTime_str, "TOFH", buffer + 4, crcBuffer, i + 1);
@@ -1788,22 +1783,6 @@ void update_tofh(time_t *begin, time_t *end, int seg)
             execute_query(conn, query_str);
         }
     }
-
-    // 30일 전 데이터 삭제
-    time_t delete_t = *end;
-    delete_t -= (DAYSEC * 30);
-    struct tm delete_time = *localtime(&delete_t);
-
-    char deleteTime_str[100];
-    snprintf(deleteTime_str, sizeof(deleteTime_str), "%4d-%02d-%02d %02d:%02d",
-             delete_time.tm_year + 1900, delete_time.tm_mon + 1, delete_time.tm_mday, delete_time.tm_hour, delete_time.tm_min);
-
-    if (seg == 1)
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_05tofh WHERE insert_time <= \'%s\';", deleteTime_str);
-    else
-        snprintf(query_str, sizeof(query_str), "DELETE FROM t_30tofh WHERE insert_time <= \'%s\';", deleteTime_str);
-
-    execute_query(conn, query_str);
     release_conn(conn); // 데이터베이스 연결 해제
 
     // TOFH 전원단절 생성 데이터 전송할 큐에 담기

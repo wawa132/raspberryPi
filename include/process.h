@@ -29,6 +29,6 @@ void update_tddh(time_t *datetime, int seg);
 
 int check_off(TOFH_TIME *t);
 void process_off(TOFH_TIME t);
-void update_tofh(time_t *begin, time_t *end, int seg);
+void update_tofh(time_t *begin, time_t *end, int seg, int day_over);
 
 #endif

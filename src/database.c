@@ -498,11 +498,11 @@ void enqueue_miss_to_transmit(time_t *datetime)
                 printf("=== No exists MISS TFDH(HAF) data to transmit ===\n");
 
             // get TNOH data
-            /*snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tnoh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadHafTime_str, i + 1);
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tnoh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadHafTime_str, i + 1);
             snprintf(update_str, sizeof(update_str), "UPDATE t_05tnoh SET send = 1 WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadHafTime_str, i + 1);
 
             if (enqueue_transmit_data(q, query_str, update_str) < 0)
-                printf("=== No exists MISS TNOH data to transmit ===\n");*/
+                printf("=== No exists MISS TNOH data to transmit ===\n");
 
             // get TOFH data
             snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d AND send = 0;", rangeTime_str, loadHafTime_str, i + 1);
@@ -625,7 +625,8 @@ void enqueue_miss_to_transmit(time_t *datetime)
 
 void enqueue_load_to_transmit(time_t begin_t, time_t end_t, int no_chimney, int seg)
 {
-    char query_str[300], beginTime_str[50], beginHafTime_str[50], endTime_str[50], endHafTime_str[50];
+    char query_str[300], beginTime_str[50], beginHafTime_str[50], endTime_str[50], endHafTime_str[50], exceptTime_str[50];
+    int day_over = 0;
 
     DATA_Q *q = remote_q[no_chimney];
 
@@ -633,18 +634,30 @@ void enqueue_load_to_transmit(time_t begin_t, time_t end_t, int no_chimney, int 
     begin += FIVSEC;
 
     time_t beginHaf = begin_t;
-    beginHaf += HAFSEC;
+    if ((beginHaf % HAFSEC) != 0)
+    {
+        beginHaf -= (beginHaf % HAFSEC);
+        beginHaf += HAFSEC;
+        beginHaf += FIVSEC;
+    }
+    else
+        beginHaf += HAFSEC;
 
     time_t end = end_t;
     end += FIVSEC;
 
     time_t endHaf = end_t;
+    endHaf -= (endHaf % HAFSEC);
     endHaf += HAFSEC;
 
+    time_t except_t = time(NULL);
+
+    struct tm start_time = *localtime(&begin_t);
     struct tm begin_time = *localtime(&begin);
     struct tm beginHaf_time = *localtime(&beginHaf);
     struct tm end_time = *localtime(&end);
     struct tm endHaf_time = *localtime(&endHaf);
+    struct tm except_time = *localtime(&except_t);
 
     snprintf(beginTime_str, sizeof(beginTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
              begin_time.tm_year + 1900, begin_time.tm_mon + 1, begin_time.tm_mday,
@@ -658,11 +671,19 @@ void enqueue_load_to_transmit(time_t begin_t, time_t end_t, int no_chimney, int 
     snprintf(endHafTime_str, sizeof(endHafTime_str), "%4d-%02d-%02d %02d:%02d:%02d",
              endHaf_time.tm_year + 1900, endHaf_time.tm_mon + 1, endHaf_time.tm_mday,
              endHaf_time.tm_hour, endHaf_time.tm_min, endHaf_time.tm_sec);
+    snprintf(exceptTime_str, sizeof(exceptTime_str), "%4d-%02d-%02d 00:05:00",
+             except_time.tm_year + 1900, except_time.tm_mon + 1, except_time.tm_mday);
 
     printf("저장자료 요청 시간(FIV): %s\n", beginTime_str);
     printf("저장자료 요청 마감(FIV): %s\n", endTime_str);
     printf("저장자료 요청 시간(HAF): %s\n", beginHafTime_str);
     printf("저장자료 요청 마감(HAF): %s\n", endHafTime_str);
+    printf("저장자료 요청 제외(ALL): %s\n", exceptTime_str);
+
+    if (start_time.tm_mday != end_time.tm_mday)
+        day_over = 1;
+    else
+        day_over = 0;
 
     if (seg == 0)
     {
@@ -674,15 +695,20 @@ void enqueue_load_to_transmit(time_t begin_t, time_t end_t, int no_chimney, int 
         if (enqueue_transmit_data(q + 1, query_str, ";") < 0)
             printf("=== There is no TNOH(HAF) data matching the request period ===\n");
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, endHafTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH(HAF) data matching the request period ===\n");
+        if (day_over)
+        {
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH(HAF)-DAY data matching the request period ===\n");
+        }
+        else
+        {
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH(HAF) data matching the request period ===\n");
+        }
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, endHafTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH(HAF)-DAY data matching the request period ===\n");
-
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, endHafTime_str, no_chimney + 1);
+        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, exceptTime_str, no_chimney + 1);
         if (enqueue_transmit_data(q + 3, query_str, ";") < 0)
             printf("=== There is no TDDH(HAF) data matching the request period ===\n");
     }
@@ -700,27 +726,32 @@ void enqueue_load_to_transmit(time_t begin_t, time_t end_t, int no_chimney, int 
         if (enqueue_transmit_data(q + 1, query_str, ";") < 0)
             printf("=== There is no TNOH(HAF) data matching the request period ===\n");
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, endTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH(FIV) data matching the request period ===\n");
+        if (day_over)
+        {
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH-DAY(FIV) data matching the request period ===\n");
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, endHafTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH(HAF) data matching the request period ===\n");
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH-DAY(HAF) data matching the request period ===\n");
+        }
+        else
+        {
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH(FIV) data matching the request period ===\n");
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, endTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH-DAY(FIV) data matching the request period ===\n");
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH(HAF) data matching the request period ===\n");
+        }
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, endHafTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH-DAY(HAF) data matching the request period ===\n");
-
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, endTime_str, no_chimney + 1);
+        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, exceptTime_str, no_chimney + 1);
         if (enqueue_transmit_data(q + 3, query_str, ";") < 0)
             printf("=== There is no TDDH(FIV) data matching the request period ===\n");
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, endHafTime_str, no_chimney + 1);
+        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_30tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginHafTime_str, exceptTime_str, no_chimney + 1);
         if (enqueue_transmit_data(q + 3, query_str, ";") < 0)
             printf("=== There is no TDDH(HAF) data matching the request period ===\n");
     }
@@ -730,15 +761,20 @@ void enqueue_load_to_transmit(time_t begin_t, time_t end_t, int no_chimney, int 
         if (enqueue_transmit_data(q, query_str, ";") < 0)
             printf("=== There is no TDAH(FIV) data matching the request period ===\n");
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, endTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH(FIV) data matching the request period ===\n");
+        if (day_over)
+        {
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH-DAY(FIV) data matching the request period ===\n");
+        }
+        else
+        {
+            snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, exceptTime_str, no_chimney + 1);
+            if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
+                printf("=== There is no TOFH(FIV) data matching the request period ===\n");
+        }
 
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tofh_day WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, endTime_str, no_chimney + 1);
-        if (enqueue_transmit_data(q + 2, query_str, ";") < 0)
-            printf("=== There is no TOFH-DAY(FIV) data matching the request period ===\n");
-
-        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, endTime_str, no_chimney + 1);
+        snprintf(query_str, sizeof(query_str), "SELECT CONCAT(cmd, _data) FROM t_05tddh WHERE insert_time >= \'%s\' AND insert_time <= \'%s\' AND chim_id = %d;", beginTime_str, exceptTime_str, no_chimney + 1);
         if (enqueue_transmit_data(q + 3, query_str, ";") < 0)
             printf("=== There is no TDDH(FIV) data matching the request period ===\n");
     }

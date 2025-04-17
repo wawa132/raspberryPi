@@ -11,6 +11,7 @@ char ftp_type[2], ftp_ipDomain[41], ftp_port[6], ftp_path[51], ftp_id[11], ftp_p
 void *tcp_server()
 {
     int total_len;
+    int optval = 1;
     struct sockaddr_in servaddr, cli;
 
     while (RUNNING)
@@ -52,6 +53,18 @@ void *tcp_server()
         else
         {
             printf("server-socket successfully binded...\n");
+        }
+
+        // Reuse socket option
+        if (setsockopt(servfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0)
+        {
+            perror("SO_REUSEADDR 설정 실패");
+            exit_server_socket();
+
+            if (RUNNING)
+                continue;
+            else
+                break;
         }
 
         // Now server is ready to listen and verification
@@ -126,7 +139,7 @@ void *tcp_server()
         process_client_message(connfd);
 
         // After process close the socket
-        close(servfd);
+        exit_server_socket();
 
         sleep(1);
     }
@@ -390,9 +403,7 @@ int pduh_process(const uint8_t *recvData, int no_chimney) // n+1은 굴뚝번호
     {
         SEND_Q *sq = dequeue(q);
         if (sq == NULL)
-        {
             break;
-        }
 
         send_response(sq->message, sq->message_len);
         free(sq);
@@ -400,7 +411,7 @@ int pduh_process(const uint8_t *recvData, int no_chimney) // n+1은 굴뚝번호
     }
 
     request_data = no_chimney + 1;
-    return 1;
+    return 0;
 }
 
 int pfst_process(const uint8_t *recvData, int no_chimney)
@@ -626,8 +637,13 @@ int pset_process(const uint8_t *recvData, int no_chimney)
                system_time.tm_year + 1900, system_time.tm_mon + 1, system_time.tm_mday,
                system_time.tm_hour, system_time.tm_min, system_time.tm_sec);
 
+        time_change = 1;
+
         // prevent time process overlapped
         pthread_mutex_lock(&time_mtx);
+
+        while (processing)
+            pthread_cond_wait(&time_cond, &time_mtx);
 
         // set system time
         set_system_time(set_time, 1);
@@ -648,7 +664,6 @@ int pset_process(const uint8_t *recvData, int no_chimney)
                     printf("Failed to create tofh thread: %d chimney\n", no_chimney + 1);
             }
         }
-
         return 1;
     }
     else

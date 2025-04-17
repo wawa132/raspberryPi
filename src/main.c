@@ -2,10 +2,12 @@
 #define MAX_FILE_SIZE 50 * 1024 * 1024 // 50MBytes
 
 bool RUNNING = true, sec_checker = true, min_checker = true;
+uint8_t processing = 0, time_change = 0;
 struct tm current_time;
 time_t now, before_now, before_5min;
 pthread_t thread[MAX_THREAD];
 pthread_mutex_t time_mtx;
+pthread_cond_t time_cond;
 TOFH_TIME off_time[2] = {0};
 
 int main()
@@ -86,6 +88,8 @@ void time_process()
 
         if (now % FIVSEC == 0 && now != before_5min)
         {
+            processing = 1;
+
             if (min_checker)
             {
                 before_5min = now;
@@ -104,6 +108,14 @@ void time_process()
             }
 
             before_5min = now;
+        }
+
+        processing = 0;
+
+        if (time_change)
+        {
+            pthread_cond_signal(&time_cond);
+            time_change = 0;
         }
     }
 }

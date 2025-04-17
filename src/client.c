@@ -217,7 +217,6 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                 printf("client-socket data received timeout(attempt %d)\n", attempt + 1);
                 if (attempt == 1)
                 {
-                    // exit_client_socket();
                     return -2;
                 }
 
@@ -228,7 +227,6 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
                 printf("client-socket data recieved failed...(attempt %d)\n", attempt + 1);
                 if (attempt == 1)
                 {
-                    // exit_client_socket();
                     return -2;
                 }
 
@@ -237,8 +235,6 @@ int send_data_to_server(SEND_Q *q, char *IP, uint16_t PORT)
         }
     }
 
-    // close the socket
-    // exit_client_socket();
     return -1;
 }
 
@@ -345,8 +341,15 @@ int handle_response(uint8_t *data, ssize_t byte_num)
 
                             if (difftime(serverTime, systemTime) > FIVSEC || difftime(systemTime, serverTime) > FIVSEC)
                             {
+                                time_change = 1;
+
                                 // prevent time process overlapped
                                 pthread_mutex_lock(&time_mtx);
+
+                                while (processing)
+                                {
+                                    pthread_cond_wait(&time_cond, &time_mtx);
+                                }
 
                                 // set system time
                                 set_system_time(received_time, 0);
